@@ -4,15 +4,15 @@ import (
 	"github.com/cogentcore/webgpu/wgpu"
 )
 
-type Clear struct {
+type ClearCommand struct {
 	device *wgpu.Device
 }
 
-func NewClear(ctx *Context) *Clear {
-	return &Clear{device: ctx.Device}
+func NewClear(ctx *Context) *ClearCommand {
+	return &ClearCommand{device: ctx.Device}
 }
 
-func (c *Clear) Clear(target *RenderTarget, color Color) error {
+func (c *ClearCommand) Clear(target *RenderTarget, color Color) error {
 	enc, err := c.device.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{
 		Label: "ClearTexture",
 	})
@@ -63,6 +63,10 @@ func (c *Clear) Clear(target *RenderTarget, color Color) error {
 
 	queue.Submit(buf)
 
+	return nil
+}
+
+func (c *ClearCommand) Flush() error {
 	return nil
 }
 

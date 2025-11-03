@@ -15,10 +15,10 @@ var _font_png []byte
 
 type TextCommands struct {
 	texture *Texture
-	sprites *SpriteCommands
+	sprites *SpriteCommand
 }
 
-func NewTextCommands(ctx *Context, sprites *SpriteCommands) (*TextCommands, error) {
+func NewTextCommands(ctx *Context, sprites *SpriteCommand) (*TextCommands, error) {
 	texture, err := DecodeTextureFromMemory(ctx, _font_png)
 	if err != nil {
 		return nil, fmt.Errorf("load font texture: %w", err)
@@ -30,7 +30,7 @@ func NewTextCommands(ctx *Context, sprites *SpriteCommands) (*TextCommands, erro
 func (t *TextCommands) DrawText(dest *RenderTarget, text string, posX, posY float32) error {
 	scale := glm.ScaleMat3[float32](6, 10)
 
-	opts := DrawImageOptions{
+	opts := DrawSpriteOptions{
 		Color:        ColorWhite,
 		FilterMode:   wgpu.FilterModeNearest,
 		BlendState:   wgpu.BlendStateAlphaBlending,
@@ -73,14 +73,14 @@ func (t *TextCommands) DrawText(dest *RenderTarget, text string, posX, posY floa
 		// draw shadow
 		opts.Color = Color{0, 0, 0, 1}
 		opts.Transform = translation.Translate(1, 1).Mul(scale)
-		if err := t.sprites.DrawImage(dest, charTexture, opts); err != nil {
+		if err := t.sprites.Draw(dest, charTexture, opts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)
 		}
 
 		// draw the actual text
 		opts.Color = Color{1, 1, 1, 1}
 		opts.Transform = translation.Mul(scale)
-		if err := t.sprites.DrawImage(dest, charTexture, opts); err != nil {
+		if err := t.sprites.Draw(dest, charTexture, opts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)
 		}
 

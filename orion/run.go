@@ -1,0 +1,90 @@
+package orion
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/oliverbestmann/go3d/glimpse"
+	"github.com/oliverbestmann/go3d/pulse"
+)
+
+type RunGameOptions struct {
+	// game to run. This is the only field that is required
+	Game Game
+
+	WindowWidth  int
+	WindowHeight int
+	WindowTitle  string
+
+	// enable MSAA rendering for the windows render target
+	MSAA bool
+}
+
+func RunGame(opts RunGameOptions) error {
+	game := opts.Game
+	if game == nil {
+		return errors.New("Game must not be nil")
+	}
+
+	if opts.WindowWidth == 0 {
+		opts.WindowWidth = 1000
+	}
+
+	if opts.WindowHeight == 0 {
+		opts.WindowHeight = 600
+	}
+
+	if opts.WindowTitle == "" {
+		opts.WindowTitle = "Orion"
+	}
+
+	// create a new window (or canvas)
+	win, err := glimpse.NewWindow(
+		opts.WindowWidth,
+		opts.WindowHeight,
+		opts.WindowTitle,
+	)
+	if err != nil {
+		return fmt.Errorf("create window: %w", err)
+	}
+
+	defer win.Terminate()
+
+	// initialize the webgpu device
+	ctx, err := pulse.New(win.SurfaceDescriptor())
+	if err != nil {
+		return fmt.Errorf("initializing wgpu: %w", err)
+	}
+
+	defer ctx.Release()
+
+	// initialize the view
+	view, err := pulse.NewView(ctx, opts.MSAA)
+	if err != nil {
+		return fmt.Errorf("create view: %w", err)
+	}
+
+	defer view.Release()
+
+	currentWindow.set(win)
+	currentContext.set(ctx)
+	currentView.set(view)
+
+	initializeCommands(ctx)
+
+	if err := game.Update(); err != nil {
+		return fmt.Errorf("initialize game: %w", err)
+	}
+
+	loopState := &LoopState{
+		Window: win,
+		Game:   game,
+	}
+
+	win.Run(func() {
+		// do the actual rendering here
+		loopOnce(view, loopState)
+	})
+
+	return nil
+}

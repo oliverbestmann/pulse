@@ -37,7 +37,7 @@ type spriteInstance struct {
 	ModelTransposedCol1 glm.Vec3f
 }
 
-type SpriteCommands struct {
+type SpriteCommand struct {
 	ctx *Context
 
 	pipelineCache *PipelineCache[spritePipelineConfig]
@@ -51,7 +51,7 @@ type SpriteCommands struct {
 	batchConfig spriteBatchConfig
 }
 
-func NewSpriteCommands(ctx *Context) (*SpriteCommands, error) {
+func NewSpriteCommand(ctx *Context) (*SpriteCommand, error) {
 	// create a vertex buffer
 	bufInstances, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Sprite.Instances",
@@ -83,7 +83,7 @@ func NewSpriteCommands(ctx *Context) (*SpriteCommands, error) {
 		return nil, fmt.Errorf("create view uniform: %w", err)
 	}
 
-	p := &SpriteCommands{
+	p := &SpriteCommand{
 		ctx:              ctx,
 		bufInstances:     bufInstances,
 		bufIndices:       bufIndices,
@@ -95,7 +95,7 @@ func NewSpriteCommands(ctx *Context) (*SpriteCommands, error) {
 	return p, nil
 }
 
-type DrawImageOptions struct {
+type DrawSpriteOptions struct {
 	Transform    glm.Mat3f
 	Color        Color
 	FilterMode   wgpu.FilterMode
@@ -107,7 +107,7 @@ type DrawImageOptions struct {
 	Shader string
 }
 
-func (p *SpriteCommands) DrawImage(dest *RenderTarget, source *Texture, opts DrawImageOptions) error {
+func (p *SpriteCommand) Draw(dest *RenderTarget, source *Texture, opts DrawSpriteOptions) error {
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
 	}
@@ -144,7 +144,7 @@ func (p *SpriteCommands) DrawImage(dest *RenderTarget, source *Texture, opts Dra
 	return nil
 }
 
-func (p *SpriteCommands) Flush() error {
+func (p *SpriteCommand) Flush() error {
 	defer p.reset()
 
 	if len(p.instances) == 0 {
@@ -159,7 +159,7 @@ func (p *SpriteCommands) Flush() error {
 		Label:         "UserTex-Sampler",
 		AddressModeU:  batchConfig.addressModeU,
 		AddressModeV:  batchConfig.addressModeV,
-		AddressModeW:  wgpu.AddressModeClampToEdge,
+		AddressModeW:  wgpu.AddressModeUndefined,
 		MagFilter:     batchConfig.filterMode,
 		MinFilter:     batchConfig.filterMode,
 		MipmapFilter:  wgpu.MipmapFilterModeLinear,
@@ -227,13 +227,8 @@ func (p *SpriteCommands) Flush() error {
 	vw, vh := batchConfig.target.Width, batchConfig.target.Height
 	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
 
-	viewTransformVecs := [3]glm.Vec4f{
-		viewTransform.Columns()[0].Extend(0),
-		viewTransform.Columns()[1].Extend(0),
-		viewTransform.Columns()[2].Extend(0),
-	}
-
-	err = queue.WriteBuffer(p.bufViewTransform, 0, AsByteSlice(&viewTransformVecs))
+	viewTransformValues := viewTransform.ToWGPU()
+	err = queue.WriteBuffer(p.bufViewTransform, 0, AsByteSlice(&viewTransformValues))
 	if err != nil {
 		return fmt.Errorf("update view transform buffer: %w", err)
 	}
@@ -387,7 +382,7 @@ func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 	return pipeline, nil
 }
 
-func (p *SpriteCommands) reset() {
+func (p *SpriteCommand) reset() {
 	p.instances = p.instances[:0]
 	p.batchConfig = spriteBatchConfig{}
 }

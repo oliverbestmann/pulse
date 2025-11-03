@@ -47,6 +47,15 @@ func (lhs Vec4[T]) Sub(rhs Vec4[T]) Vec4[T] {
 	}
 }
 
+func (lhs Vec4[T]) Mul(rhs Vec4[T]) Vec4[T] {
+	return Vec4[T]{
+		lhs[0] * rhs[0],
+		lhs[1] * rhs[1],
+		lhs[2] * rhs[2],
+		lhs[3] * rhs[3],
+	}
+}
+
 func (lhs Vec4[T]) Truncate() Vec3[T] {
 	return Vec3[T]{lhs[0], lhs[1], lhs[2]}
 }

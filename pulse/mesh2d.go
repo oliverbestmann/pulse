@@ -30,7 +30,7 @@ type MeshVertex struct {
 	Color    Color
 }
 
-type Mesh2dCommands struct {
+type Mesh2dCommand struct {
 	ctx *Context
 
 	pipelineCache *PipelineCache[mesh2dRenderPipeline]
@@ -41,7 +41,7 @@ type Mesh2dCommands struct {
 	batchConfig mesh2dBatchConfig
 }
 
-func NewMesh2dCommands(ctx *Context) (*Mesh2dCommands, error) {
+func NewMesh2dCommands(ctx *Context) (*Mesh2dCommand, error) {
 	// create a vertex buffer
 	buvVertices, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",
@@ -53,7 +53,7 @@ func NewMesh2dCommands(ctx *Context) (*Mesh2dCommands, error) {
 		return nil, fmt.Errorf("create vertex buffer: %w", err)
 	}
 
-	p := &Mesh2dCommands{
+	p := &Mesh2dCommand{
 		ctx:         ctx,
 		buvVertices: buvVertices,
 	}
@@ -73,7 +73,7 @@ type DrawMesh2dOptions struct {
 	Shader string
 }
 
-func (p *Mesh2dCommands) DrawTriangles(dest *RenderTarget, opts DrawMesh2dOptions) error {
+func (p *Mesh2dCommand) DrawTriangles(dest *RenderTarget, opts DrawMesh2dOptions) error {
 	if opts.Shader == "" {
 		opts.Shader = mesh2dShaderCode
 	}
@@ -114,7 +114,7 @@ func (p *Mesh2dCommands) DrawTriangles(dest *RenderTarget, opts DrawMesh2dOption
 	return nil
 }
 
-func (p *Mesh2dCommands) Flush() error {
+func (p *Mesh2dCommand) Flush() error {
 	defer p.reset()
 
 	if len(p.vertices) == 0 {
@@ -275,7 +275,7 @@ func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 	return pipeline, nil
 }
 
-func (p *Mesh2dCommands) reset() {
+func (p *Mesh2dCommand) reset() {
 	p.vertices = p.vertices[:0]
 	p.batchConfig = mesh2dBatchConfig{}
 }

@@ -6,12 +6,6 @@ import (
 	"github.com/cogentcore/webgpu/wgpu"
 )
 
-type NewViewOptions struct {
-	MSAA   bool
-	Width  uint32
-	Height uint32
-}
-
 type View struct {
 	*Context
 
@@ -27,7 +21,7 @@ type View struct {
 	depthTexture *Texture
 }
 
-func NewView(dev *Context, opts NewViewOptions) (st *View, err error) {
+func NewView(dev *Context, msaa bool) (st *View, err error) {
 	defer func() {
 		if err != nil && st != nil {
 			st.Release()
@@ -37,7 +31,7 @@ func NewView(dev *Context, opts NewViewOptions) (st *View, err error) {
 
 	st = &View{Context: dev}
 
-	if opts.MSAA {
+	if msaa {
 		st.sampleCount = 4
 	} else {
 		st.sampleCount = 1
@@ -54,11 +48,6 @@ func NewView(dev *Context, opts NewViewOptions) (st *View, err error) {
 		AlphaMode:   caps.AlphaModes[0],
 	}
 
-	err = st.Configure(opts.Width, opts.Height)
-	if err != nil {
-		return nil, err
-	}
-
 	return st, nil
 }
 
@@ -66,22 +55,26 @@ func (vs *View) MSAA() bool {
 	return vs.sampleCount > 1
 }
 
-func (vs *View) AsRenderTarget(screen *wgpu.TextureView) *RenderTarget {
-	renderTarget := &RenderTarget{
-		Format:      vs.surfaceConfig.Format,
-		Width:       vs.surfaceConfig.Width,
-		Height:      vs.surfaceConfig.Height,
-		SampleCount: vs.sampleCount,
-	}
+func (vs *View) AsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
+	// vs.surfaceConfig.Format
+	// vs.surfaceConfig.Width
+	// vs.surfaceConfig.Height
 
 	if vs.MSAA() {
-		renderTarget.View = vs.msaaTexture.textureView
-		renderTarget.ResolveTarget = screen
+		return ImportTexture(
+			vs.msaaTexture.texture,
+			vs.msaaTexture.textureView,
+			screen,
+			screenView,
+		)
 	} else {
-		renderTarget.View = screen
+		return ImportTexture(
+			screen,
+			screenView,
+			nil,
+			nil,
+		)
 	}
-
-	return renderTarget
 }
 
 func (vs *View) Release() {

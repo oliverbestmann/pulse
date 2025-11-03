@@ -146,6 +146,35 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	return t, nil
 }
 
+func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *wgpu.Texture, resolveTargetView *wgpu.TextureView) *Texture {
+	t := &Texture{
+		texture:           texture,
+		textureView:       textureView,
+		resolveTarget:     resolveTarget,
+		resolveTargetView: resolveTargetView,
+		format:            texture.GetFormat(),
+		sampleCount:       texture.GetSampleCount(),
+		width:             texture.GetWidth(),
+		height:            texture.GetHeight(),
+	}
+
+	t.root = t
+
+	return t
+}
+
+func (t *Texture) Width() uint32 {
+	return t.width
+}
+
+func (t *Texture) Height() uint32 {
+	return t.height
+}
+
+func (t *Texture) Size() glm.Vec2f {
+	return glm.Vec2f{float32(t.width), float32(t.height)}
+}
+
 func (t *Texture) UVOffset() glm.Vec2f {
 	return glm.Vec2f{
 		float32(t.x) / float32(t.root.width),
