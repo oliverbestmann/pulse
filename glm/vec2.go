@@ -12,7 +12,7 @@ func (lhs Vec2[T]) Magnitude() T {
 	return T(math.Sqrt(float64(lhs.Dot(lhs))))
 }
 
-func (lhs Vec2[T]) MulScalar(s T) Vec2[T] {
+func (lhs Vec2[T]) Scale(s T) Vec2[T] {
 	return Vec2[T]{
 		lhs[0] * s,
 		lhs[1] * s,
@@ -20,7 +20,7 @@ func (lhs Vec2[T]) MulScalar(s T) Vec2[T] {
 }
 
 func (lhs Vec2[T]) Normalize() Vec2[T] {
-	return lhs.MulScalar(1 / lhs.Magnitude())
+	return lhs.Scale(1 / lhs.Magnitude())
 }
 
 func (lhs Vec2[T]) Add(rhs Vec2[T]) Vec2[T] {

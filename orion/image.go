@@ -23,6 +23,10 @@ func ColorScaleOf(color Color) ColorScale {
 	}
 }
 
+func ColorScaleRGBA(r, g, b, a float32) ColorScale {
+	return ColorScaleOf(glm.Vec4f{r, g, b, a})
+}
+
 func (c *ColorScale) Scaled(vec Color) ColorScale {
 	return ColorScaleOf(c.ToColor().Mul(vec))
 }
@@ -62,11 +66,20 @@ type DrawImageOptions struct {
 
 	// Transform to apply to the image
 	Transform glm.Mat3f
+
+	// BlendState defines how to blend the image with the
+	// existing framebuffer. The default is BlendStateDefault.
+	BlendState wgpu.BlendState
 }
 
 func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	if opts == nil {
 		opts = &DrawImageOptions{}
+	}
+
+	var blendState = opts.BlendState
+	if blendState == (wgpu.BlendState{}) {
+		blendState = BlendStateDefault
 	}
 
 	sprites := spriteCommand.Get()
@@ -78,7 +91,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 		Transform:    opts.Transform.Mul(transform),
 		Color:        opts.ColorScale.ToColor(),
 		FilterMode:   wgpu.FilterModeLinear,
-		BlendState:   wgpu.BlendStateAlphaBlending,
+		BlendState:   blendState,
 		AddressModeU: wgpu.AddressModeClampToEdge,
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	})

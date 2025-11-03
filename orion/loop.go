@@ -16,7 +16,11 @@ type LoopState struct {
 	Height uint32
 }
 
-func loopOnce(viewState *pulse.View, loopState *LoopState) {
+func loopOnce(viewState *pulse.View, loopState *LoopState) error {
+	if err := loopState.Game.Update(); err != nil {
+		return fmt.Errorf("update game: %w", err)
+	}
+
 	newWidth, newHeight := loopState.Window.GetSize()
 	if loopState.Width != newWidth || loopState.Height != newHeight {
 		loopState.Width = newWidth
@@ -42,9 +46,11 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) {
 		case strings.Contains(errStr, "Surface is outdated"):
 		case strings.Contains(errStr, "Surface was lost"):
 		default:
-			panic(err)
+			return fmt.Errorf("render frame: %w", err)
 		}
 	}
+
+	return nil
 }
 
 func render(ctx *pulse.View, game Game) error {

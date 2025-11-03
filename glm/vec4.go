@@ -16,7 +16,7 @@ func (lhs Vec4[T]) LengthSqr() T {
 	return lhs.Dot(lhs)
 }
 
-func (lhs Vec4[T]) MulScalar(s T) Vec4[T] {
+func (lhs Vec4[T]) Scale(s T) Vec4[T] {
 	return Vec4[T]{
 		lhs[0] * s,
 		lhs[1] * s,
@@ -26,7 +26,7 @@ func (lhs Vec4[T]) MulScalar(s T) Vec4[T] {
 }
 
 func (lhs Vec4[T]) Normalize() Vec4[T] {
-	return lhs.MulScalar(1 / lhs.Length())
+	return lhs.Scale(1 / lhs.Length())
 }
 
 func (lhs Vec4[T]) Add(rhs Vec4[T]) Vec4[T] {

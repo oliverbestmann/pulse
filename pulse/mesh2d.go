@@ -41,7 +41,7 @@ type Mesh2dCommand struct {
 	batchConfig mesh2dBatchConfig
 }
 
-func NewMesh2dCommands(ctx *Context) (*Mesh2dCommand, error) {
+func NewMesh2dCommand(ctx *Context) (*Mesh2dCommand, error) {
 	// create a vertex buffer
 	buvVertices, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",

@@ -5,6 +5,7 @@ package glimpse
 import (
 	"syscall/js"
 
+	"github.com/cogentcore/webgpu/jsx"
 	"github.com/cogentcore/webgpu/wgpu"
 )
 
@@ -49,29 +50,38 @@ func (g *jsWindow) Terminate() {
 	// do nothing
 }
 
-func (g *jsWindow) Run(render func()) {
+func (g *jsWindow) Run(render func() error) error {
 	helper := js.Global().Call("eval", `({
         async run(runOnce) {
             while (true) {
-                await new Promise(resolve => requestAnimationFrame(resolve))
-                runOnce();
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                if (!runOnce()) {
+					break;
+				}
             }
         }
 	})`)
 
+	errCh := make(chan error)
 	renderWrapper := func(this js.Value, args []js.Value) any {
 		resizeCanvas(g.canvas)
-		render()
-		return nil
+
+		if err := render(); err != nil {
+			errCh <- err
+			return false
+		}
+
+		return true
 	}
 
 	fn := js.FuncOf(renderWrapper)
 	defer fn.Release()
 
-	helper.Call("run", fn)
+	promise := helper.Call("run", fn)
+	jsx.Await(promise)
 
-	// block forever
-	select {}
+	// block until we get an error
+	return <-errCh
 }
 
 func resizeCanvas(canvas js.Value) {

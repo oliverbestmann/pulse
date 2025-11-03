@@ -72,7 +72,7 @@ func RunGame(opts RunGameOptions) error {
 
 	initializeCommands(ctx)
 
-	if err := game.Update(); err != nil {
+	if err := game.Initialize(); err != nil {
 		return fmt.Errorf("initialize game: %w", err)
 	}
 
@@ -81,10 +81,8 @@ func RunGame(opts RunGameOptions) error {
 		Game:   game,
 	}
 
-	win.Run(func() {
+	return win.Run(func() error {
 		// do the actual rendering here
-		loopOnce(view, loopState)
+		return loopOnce(view, loopState)
 	})
-
-	return nil
 }

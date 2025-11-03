@@ -55,9 +55,14 @@ func (g *glfwWindow) Terminate() {
 	glfw.Terminate()
 }
 
-func (g *glfwWindow) Run(render func()) {
+func (g *glfwWindow) Run(render func() error) error {
 	for !g.win.ShouldClose() {
 		glfw.PollEvents()
-		render()
+
+		if err := render(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

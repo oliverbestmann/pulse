@@ -13,47 +13,54 @@ import (
 //go:embed font.png
 var _font_png []byte
 
-type TextCommands struct {
+type TextCommand struct {
 	texture *Texture
 	sprites *SpriteCommand
 }
 
-func NewTextCommands(ctx *Context, sprites *SpriteCommand) (*TextCommands, error) {
+func NewTextCommand(ctx *Context, sprites *SpriteCommand) (*TextCommand, error) {
 	texture, err := DecodeTextureFromMemory(ctx, _font_png)
 	if err != nil {
 		return nil, fmt.Errorf("load font texture: %w", err)
 	}
 
-	return &TextCommands{texture, sprites}, nil
+	return &TextCommand{texture, sprites}, nil
 }
 
-func (t *TextCommands) DrawText(dest *RenderTarget, text string, posX, posY float32) error {
-	scale := glm.ScaleMat3[float32](6, 10)
+type DrawTextOptions struct {
+	Text      string
+	Transform glm.Mat3f
+	Color     Color
+}
 
-	opts := DrawSpriteOptions{
-		Color:        ColorWhite,
+func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
+	spriteOpts := DrawSpriteOptions{
+		Color:        opts.Color,
 		FilterMode:   wgpu.FilterModeNearest,
 		BlendState:   wgpu.BlendStateAlphaBlending,
 		AddressModeU: wgpu.AddressModeClampToEdge,
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	}
 
-	baseX := posX
+	// base font size
+	scale := glm.ScaleMat3[float32](6.0, 10.0)
 
-	for _, ch := range text {
+	var pos glm.Vec2f
+
+	for _, ch := range opts.Text {
 		switch {
 		case ch == ' ':
-			posX += 6
+			pos[0] += 1
 			continue
 
 		case ch == '\t':
-			const tabWidth = 6 * 8
-			posX = float32(int(posX+6*4) / tabWidth * tabWidth)
+			const tabWidth = 8
+			pos[0] = float32(int((pos[0]+tabWidth)/tabWidth) * tabWidth)
 			continue
 
 		case ch == '\n':
-			posX = baseX
-			posY += 16
+			pos[0] = 0
+			pos[1] += 1
 			continue
 
 		case ch < 32:
@@ -67,25 +74,24 @@ func (t *TextCommands) DrawText(dest *RenderTarget, text string, posX, posY floa
 		}
 
 		charTexture := t.texture.SubTexture(posCh, glm.Vec2[uint32]{6, 10})
-
-		translation := glm.TranslationMat3(posX, posY)
+		charTransform := scale.Translate(pos.XY())
 
 		// draw shadow
-		opts.Color = Color{0, 0, 0, 1}
-		opts.Transform = translation.Translate(1, 1).Mul(scale)
-		if err := t.sprites.Draw(dest, charTexture, opts); err != nil {
+		spriteOpts.Color = Color{0, 0, 0, 1}.Mul(opts.Color)
+		spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
+		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)
 		}
 
 		// draw the actual text
-		opts.Color = Color{1, 1, 1, 1}
-		opts.Transform = translation.Mul(scale)
-		if err := t.sprites.Draw(dest, charTexture, opts); err != nil {
+		spriteOpts.Color = Color{1, 1, 1, 1}.Mul(opts.Color)
+		spriteOpts.Transform = opts.Transform.Mul(charTransform)
+		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)
 		}
 
 		// advance position by one char
-		posX += 6
+		pos[0] += 1
 	}
 
 	return nil

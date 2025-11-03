@@ -20,7 +20,7 @@ func (t *FrameTimes) update(d time.Duration) {
 
 	t.Delta = d
 	t.MaxDuration = max(t.MaxDuration, d)
-	
+
 	if t.FrameCount < window/2 {
 		t.AverageDuration = d
 	} else {
@@ -32,16 +32,25 @@ func (t *FrameTimes) FPS() float64 {
 	return 1.0 / t.AverageDuration.Seconds()
 }
 
-func (t *FrameTimes) Tick() bool {
+func (t *FrameTimes) Tick() DeltaTime {
 	now := time.Now()
 
+	var dt time.Duration
 	if t.FrameCount > 0 {
-		dt := now.Sub(t.lastTime)
+		dt = now.Sub(t.lastTime)
 		t.update(dt)
 	}
 
 	t.lastTime = now
 	t.FrameCount += 1
 
-	return t.FrameCount%60 == 0
+	return DeltaTime{
+		Exact:   dt,
+		Seconds: float32(dt.Seconds()),
+	}
+}
+
+type DeltaTime struct {
+	Exact   time.Duration
+	Seconds float32
 }
