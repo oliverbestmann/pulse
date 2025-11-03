@@ -15,6 +15,10 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 		opts = &DebugTextOptions{}
 	}
 
+	// switch to sprite rendering, as text rendering is just using the
+	// sprite pipeline for now
+	switchToCommand(spriteCommand.Get())
+
 	err := textCommand.Get().DrawText(dest.renderTarget, pulse.DrawTextOptions{
 		Text:      text,
 		Transform: opts.Transform,
