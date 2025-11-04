@@ -33,12 +33,16 @@ func (g *jsWindow) ShouldClose() bool {
 }
 
 func (g *jsWindow) GetSize() (uint32, uint32) {
-	ratio := js.Global().Get("devicePixelRatio").Float()
+	ratio := devicePixelRatio()
 
 	vv := js.Global().Get("visualViewport")
 	width := vv.Get("width").Int()
 	height := vv.Get("height").Int()
 	return uint32(float64(width) * ratio), uint32(float64(height) * ratio)
+}
+
+func devicePixelRatio() float64 {
+	return js.Global().Get("devicePixelRatio").Float()
 }
 
 func (g *jsWindow) SurfaceDescriptor() *wgpu.SurfaceDescriptor {
@@ -91,7 +95,7 @@ func resizeCanvas(canvas js.Value) {
 	viewWidth := vv.Get("width").Float()
 	viewHeight := vv.Get("height").Float()
 
-	ratio := js.Global().Get("devicePixelRatio").Float()
+	ratio := devicePixelRatio()
 
 	canvas.Set("width", viewWidth*ratio)
 	canvas.Set("height", viewHeight*ratio)

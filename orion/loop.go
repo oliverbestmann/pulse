@@ -26,7 +26,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) error {
 		loopState.Width = newWidth
 		loopState.Height = newHeight
 
-		slog.Info("Resize screen",
+		slog.Debug("Resize screen",
 			slog.Int("width", int(newWidth)),
 			slog.Int("height", int(newHeight)),
 		)

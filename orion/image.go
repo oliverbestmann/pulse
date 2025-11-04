@@ -57,7 +57,7 @@ func (i *Image) Clear(color Color) {
 	SwitchToCommand(clr)
 
 	err := clr.Clear(i.renderTarget, color)
-	handle(err, "clear image")
+	Handle(err, "clear image")
 }
 
 type DrawImageOptions struct {
@@ -85,10 +85,8 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	transform := glm.ScaleMat3[float32](source.Size().XY())
-
 	err := sprites.Draw(i.renderTarget, source.texture, pulse.DrawSpriteOptions{
-		Transform:    opts.Transform.Mul(transform),
+		Transform:    opts.Transform,
 		Color:        opts.ColorScale.ToColor(),
 		FilterMode:   wgpu.FilterModeLinear,
 		BlendState:   blendState,
@@ -96,7 +94,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	})
 
-	handle(err, "draw image")
+	Handle(err, "draw image")
 }
 
 func (i *Image) Size() glm.Vec2f {
@@ -150,7 +148,7 @@ func NewImage(width, height uint32, opts *NewImageOptions) *Image {
 		Label:  opts.Label,
 	})
 
-	handle(err, "create new texture")
+	Handle(err, "create new texture")
 
 	return asImage(texture)
 }

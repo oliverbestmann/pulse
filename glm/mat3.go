@@ -117,13 +117,21 @@ func (lhs Mat3[T]) Transpose() Mat3[T] {
 
 func (lhs Mat3[T]) Row(i int) Vec3[T] {
 	if i == 0 {
-		return Vec3[T]{lhs.m00(), lhs.m10(), lhs.m20()}
+		return Vec3[T]{
+			lhs.m00(),
+			lhs.m10(),
+			lhs.m20(),
+		}
 	}
 	if i == 1 {
 		return Vec3[T]{lhs.m01(), lhs.m11(), lhs.m21()}
 	}
 	if i == 2 {
-		return Vec3[T]{lhs.m02(), lhs.m12(), lhs.m22()}
+		return Vec3[T]{
+			lhs.m02(),
+			lhs.m12(),
+			lhs.m22(),
+		}
 	}
 
 	panic(i)
@@ -137,38 +145,38 @@ func (lhs Mat3[T]) ToWGPU() [12]float32 {
 	}
 }
 
-func (lhs Mat3[T]) m00() T {
+func (lhs *Mat3[T]) m00() T {
 	return lhs.values[0][0] + 1
 }
 
-func (lhs Mat3[T]) m01() T {
+func (lhs *Mat3[T]) m01() T {
 	return lhs.values[0][1]
 }
 
-func (lhs Mat3[T]) m02() T {
+func (lhs *Mat3[T]) m02() T {
 	return lhs.values[0][2]
 }
 
-func (lhs Mat3[T]) m10() T {
+func (lhs *Mat3[T]) m10() T {
 	return lhs.values[1][0]
 }
 
-func (lhs Mat3[T]) m11() T {
+func (lhs *Mat3[T]) m11() T {
 	return lhs.values[1][1] + 1
 }
 
-func (lhs Mat3[T]) m12() T {
+func (lhs *Mat3[T]) m12() T {
 	return lhs.values[1][2]
 }
 
-func (lhs Mat3[T]) m20() T {
+func (lhs *Mat3[T]) m20() T {
 	return lhs.values[2][0]
 }
 
-func (lhs Mat3[T]) m21() T {
+func (lhs *Mat3[T]) m21() T {
 	return lhs.values[2][1]
 }
 
-func (lhs Mat3[T]) m22() T {
+func (lhs *Mat3[T]) m22() T {
 	return lhs.values[2][2] + 1
 }

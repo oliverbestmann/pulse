@@ -13,15 +13,15 @@ func initializeCommands(ctx *pulse.Context) {
 	clearCommand.set(pulse.NewClear(ctx))
 
 	sprite, err := pulse.NewSpriteCommand(ctx)
-	handle(err, "initialize sprite command")
+	Handle(err, "initialize sprite command")
 	spriteCommand.set(sprite)
 
 	mesh2d, err := pulse.NewMesh2dCommand(ctx)
-	handle(err, "initialize mesh2d command")
+	Handle(err, "initialize mesh2d command")
 	mesh2dCommand.set(mesh2d)
 
 	text, err := pulse.NewTextCommand(ctx, sprite)
-	handle(err, "initialize text command")
+	Handle(err, "initialize text command")
 	textCommand.set(text)
 }
 
@@ -46,6 +46,6 @@ func flushCurrentCommand() {
 		defer func() { currentCommand = nil }()
 
 		err := currentCommand.Flush()
-		handle(err, "flush pending commands")
+		Handle(err, "flush pending commands")
 	}
 }

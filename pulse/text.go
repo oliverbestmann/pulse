@@ -43,7 +43,10 @@ func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	}
 
-	// base font size
+	// normalize char texture size to 1x1
+	baseTransform := glm.ScaleMat3[float32](1/6.0, 1/10.0)
+
+	// scale text layout on a 1x1 grid to the appropriate target size
 	scale := glm.ScaleMat3[float32](6.0, 10.0)
 
 	var pos glm.Vec2f
@@ -76,7 +79,7 @@ func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
 		}
 
 		charTexture := t.texture.SubTexture(posCh, glm.Vec2[uint32]{6, 10})
-		charTransform := scale.Translate(pos.XY())
+		charTransform := scale.Translate(pos.XY()).Mul(baseTransform)
 
 		// draw shadow
 		spriteOpts.Color = Color{0, 0, 0, 1}.Mul(opts.Color)

@@ -8,6 +8,10 @@ struct VertexOutput {
 @binding(2)
 var<uniform> view_transform: mat3x3f;
 
+@group(0)
+@binding(3)
+var<uniform> local_transform: mat3x3f;
+
 @vertex
 fn vs_main(
     @builtin(vertex_index) index: u32,
@@ -18,7 +22,7 @@ fn vs_main(
     @location(4) tr1: vec3f,
 ) -> VertexOutput {
     let z = vec3f(0, 0, 1);
-    let transform = view_transform * transpose(mat3x3(tr0, tr1, z));
+    let transform = view_transform * (transpose(mat3x3(tr0, tr1, z)) * local_transform);
 
     // index vertices as p00, p01, p10, p11, this way
     // x and y can be derived from the lower bit of index

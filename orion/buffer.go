@@ -1,8 +1,6 @@
 package orion
 
 import (
-	"runtime"
-
 	"github.com/cogentcore/webgpu/wgpu"
 )
 
@@ -11,11 +9,9 @@ func CreateBuffer(desc wgpu.BufferDescriptor) *wgpu.Buffer {
 
 	// allocate a buffer to write to
 	buf, err := ctx.CreateBuffer(&desc)
-	handle(err, "create buffer label=%q", desc.Label)
+	Handle(err, "create buffer label=%q", desc.Label)
 
-	runtime.SetFinalizer(buf, func(buf *wgpu.Buffer) {
-		buf.Release()
-	})
+	RegisterWithGC(buf)
 
 	return buf
 }
@@ -25,11 +21,9 @@ func CreateBufferInit(desc wgpu.BufferInitDescriptor) *wgpu.Buffer {
 
 	// allocate a buffer to write to
 	buf, err := ctx.CreateBufferInit(&desc)
-	handle(err, "create and init buffer label=%q", desc.Label)
+	Handle(err, "create and init buffer label=%q", desc.Label)
 
-	runtime.SetFinalizer(buf, func(buf *wgpu.Buffer) {
-		buf.Release()
-	})
+	RegisterWithGC(buf)
 
 	return buf
 }
@@ -42,5 +36,5 @@ func WriteToBuffer[T any](target *wgpu.Buffer, values []T) {
 	defer queue.Release()
 
 	err := queue.WriteBuffer(target, 0, wgpu.ToBytes(values))
-	handle(err, "write to buffer")
+	Handle(err, "write to buffer")
 }

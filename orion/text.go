@@ -30,5 +30,5 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 		Color:     opts.ColorScale.ToColor(),
 		TabWidth:  tabWidth,
 	})
-	handle(err, "render text")
+	Handle(err, "render text")
 }

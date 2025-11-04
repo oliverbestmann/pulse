@@ -23,6 +23,8 @@ type spriteBatchConfig struct {
 	blendState   wgpu.BlendState
 	addressModeU wgpu.AddressMode
 	addressModeV wgpu.AddressMode
+	sourceWidth  uint32
+	sourceHeight uint32
 	shader       string
 }
 
@@ -46,7 +48,8 @@ type SpriteCommand struct {
 	bufInstances *wgpu.Buffer
 	bufIndices   *wgpu.Buffer
 
-	bufViewTransform *wgpu.Buffer
+	bufViewTransform  *wgpu.Buffer
+	bufLocalTransform *wgpu.Buffer
 
 	batchConfig spriteBatchConfig
 }
@@ -80,14 +83,25 @@ func NewSpriteCommand(ctx *Context) (*SpriteCommand, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("create view uniform: %w", err)
+		return nil, fmt.Errorf("create view transform uniform: %w", err)
+	}
+
+	bufLocalTransform, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+		Label: "Sprite.LocalUniform",
+		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
+		Size:  uint64(unsafe.Sizeof([4 * 4]float32{})),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("create local transform uniform: %w", err)
 	}
 
 	p := &SpriteCommand{
-		ctx:              ctx,
-		bufInstances:     bufInstances,
-		bufIndices:       bufIndices,
-		bufViewTransform: bufViewTransform,
+		ctx:               ctx,
+		bufInstances:      bufInstances,
+		bufIndices:        bufIndices,
+		bufViewTransform:  bufViewTransform,
+		bufLocalTransform: bufLocalTransform,
 	}
 
 	p.pipelineCache = NewPipelineCache[spritePipelineConfig](ctx)
@@ -115,6 +129,8 @@ func (p *SpriteCommand) Draw(dest *RenderTarget, source *Texture, opts DrawSprit
 	batchConfig := spriteBatchConfig{
 		target:       dest,
 		texture:      source.SourceView(),
+		sourceWidth:  source.Width(),
+		sourceHeight: source.Height(),
 		filterMode:   opts.FilterMode,
 		blendState:   opts.BlendState,
 		addressModeU: opts.AddressModeU,
@@ -206,6 +222,11 @@ func (p *SpriteCommand) Flush() error {
 				Buffer:  p.bufViewTransform,
 				Size:    wgpu.WholeSize,
 			},
+			{
+				Binding: 3,
+				Buffer:  p.bufLocalTransform,
+				Size:    wgpu.WholeSize,
+			},
 		},
 	})
 
@@ -231,6 +252,16 @@ func (p *SpriteCommand) Flush() error {
 	err = queue.WriteBuffer(p.bufViewTransform, 0, AsByteSlice(&viewTransformValues))
 	if err != nil {
 		return fmt.Errorf("update view transform buffer: %w", err)
+	}
+
+	// scale by size of the source image
+	sw, sh := float32(batchConfig.sourceWidth), float32(batchConfig.sourceHeight)
+	localTransform := glm.ScaleMat3(sw, sh)
+
+	localTransformValues := localTransform.ToWGPU()
+	err = queue.WriteBuffer(p.bufLocalTransform, 0, AsByteSlice(&localTransformValues))
+	if err != nil {
+		return fmt.Errorf("update local transform buffer: %w", err)
 	}
 
 	encoder, err := p.ctx.CreateCommandEncoder(nil)

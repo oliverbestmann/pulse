@@ -130,66 +130,66 @@ func (lhs Mat4[T]) Transform(rhs Mat4[T]) Vec4[T] {
 	}
 }
 
-func (lhs Mat4[T]) c0() T {
+func (lhs *Mat4[T]) c0() T {
 	return lhs.values[0][0] + 1
 }
 
-func (lhs Mat4[T]) c1() T {
+func (lhs *Mat4[T]) c1() T {
 	return lhs.values[0][1]
 }
 
-func (lhs Mat4[T]) c2() T {
+func (lhs *Mat4[T]) c2() T {
 	return lhs.values[0][2]
 }
 
-func (lhs Mat4[T]) c3() T {
+func (lhs *Mat4[T]) c3() T {
 	return lhs.values[0][3]
 }
 
-func (lhs Mat4[T]) c4() T {
+func (lhs *Mat4[T]) c4() T {
 	return lhs.values[1][0]
 }
 
-func (lhs Mat4[T]) c5() T {
+func (lhs *Mat4[T]) c5() T {
 	return lhs.values[1][1] + 1
 }
 
-func (lhs Mat4[T]) c6() T {
+func (lhs *Mat4[T]) c6() T {
 	return lhs.values[1][2]
 }
 
-func (lhs Mat4[T]) c7() T {
+func (lhs *Mat4[T]) c7() T {
 	return lhs.values[1][3]
 }
 
-func (lhs Mat4[T]) c8() T {
+func (lhs *Mat4[T]) c8() T {
 	return lhs.values[2][0]
 }
 
-func (lhs Mat4[T]) c9() T {
+func (lhs *Mat4[T]) c9() T {
 	return lhs.values[2][1]
 }
 
-func (lhs Mat4[T]) c10() T {
+func (lhs *Mat4[T]) c10() T {
 	return lhs.values[2][2] + 1
 }
 
-func (lhs Mat4[T]) c11() T {
+func (lhs *Mat4[T]) c11() T {
 	return lhs.values[2][3]
 }
 
-func (lhs Mat4[T]) c12() T {
+func (lhs *Mat4[T]) c12() T {
 	return lhs.values[3][0]
 }
 
-func (lhs Mat4[T]) c13() T {
+func (lhs *Mat4[T]) c13() T {
 	return lhs.values[3][1]
 }
 
-func (lhs Mat4[T]) c14() T {
+func (lhs *Mat4[T]) c14() T {
 	return lhs.values[3][2]
 }
 
-func (lhs Mat4[T]) c15() T {
+func (lhs *Mat4[T]) c15() T {
 	return lhs.values[3][3] + 1
 }
