@@ -41,6 +41,13 @@ func (lhs Vec2[T]) Extend(z T) Vec3[T] {
 	return Vec3[T]{lhs[0], lhs[1], z}
 }
 
+func (lhs Vec2[T]) ToWGPU() [2]float32 {
+	return [2]float32{
+		float32(lhs[0]),
+		float32(lhs[1]),
+	}
+}
+
 func (lhs Vec2[T]) XY() (x, y T) {
 	x = lhs[0]
 	y = lhs[1]

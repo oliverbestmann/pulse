@@ -72,7 +72,8 @@ func render(ctx *pulse.View, game Game) error {
 	screenTexture := ctx.AsTexture(screen, screenView)
 	game.Draw(asImage(screenTexture))
 
-	flushCommand()
+	// flushes any outstanding pipelines
+	SwitchToCommand(nil)
 
 	// present the rendered image
 	ctx.Surface.Present()

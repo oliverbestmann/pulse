@@ -5,7 +5,6 @@ package glimpse
 import (
 	"syscall/js"
 
-	"github.com/cogentcore/webgpu/jsx"
 	"github.com/cogentcore/webgpu/wgpu"
 )
 
@@ -51,19 +50,9 @@ func (g *jsWindow) Terminate() {
 }
 
 func (g *jsWindow) Run(render func() error) error {
-	helper := js.Global().Call("eval", `({
-        async run(runOnce) {
-            while (true) {
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                if (!runOnce()) {
-					break;
-				}
-            }
-        }
-	})`)
+	errCh := make(chan error, 1)
 
-	errCh := make(chan error)
-	renderWrapper := func(this js.Value, args []js.Value) any {
+	renderOnce := func() bool {
 		resizeCanvas(g.canvas)
 
 		if err := render(); err != nil {
@@ -74,11 +63,24 @@ func (g *jsWindow) Run(render func() error) error {
 		return true
 	}
 
-	fn := js.FuncOf(renderWrapper)
-	defer fn.Release()
+	var renderAndSchedule js.Func
 
-	promise := helper.Call("run", fn)
-	jsx.Await(promise)
+	renderAndSchedule = js.FuncOf(func(this js.Value, args []js.Value) any {
+		// we must not block in a FuncOf callback. spawn a go routine and call
+		// requestAnimationFrame later from there
+		go func() {
+			if renderOnce() {
+				js.Global().Call("requestAnimationFrame", renderAndSchedule)
+			}
+		}()
+
+		return nil
+	})
+
+	defer renderAndSchedule.Release()
+
+	// trigger the async render loop
+	renderAndSchedule.Invoke()
 
 	// block until we get an error
 	return <-errCh

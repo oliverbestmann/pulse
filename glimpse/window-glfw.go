@@ -30,7 +30,7 @@ func NewWindow(width, height int, title string) (Window, error) {
 
 	win := &glfwWindow{
 		win:  window,
-		prof: profile.Start(profile.MemProfile),
+		prof: profile.Start(profile.CPUProfile),
 	}
 
 	return win, nil

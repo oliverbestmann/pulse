@@ -31,6 +31,7 @@ type DrawTextOptions struct {
 	Text      string
 	Transform glm.Mat3f
 	Color     Color
+	TabWidth  uint
 }
 
 func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
@@ -54,11 +55,12 @@ func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
 			continue
 
 		case ch == '\t':
-			const tabWidth = 8
-			pos[0] = float32(int((pos[0]+tabWidth)/tabWidth) * tabWidth)
+			tw := opts.TabWidth
+			pos[0] = float32(uint((pos[0]+float32(tw))/float32(tw)) * tw)
 			continue
 
 		case ch == '\n':
+			// go to start of next line
 			pos[0] = 0
 			pos[1] += 1
 			continue
@@ -95,6 +97,10 @@ func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
 	}
 
 	return nil
+}
+
+func (t *TextCommand) Flush() error {
+	return t.sprites.Flush()
 }
 
 var chars = map[rune]glm.Vec2[uint32]{

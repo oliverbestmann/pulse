@@ -8,6 +8,7 @@ import (
 type DebugTextOptions struct {
 	Transform  glm.Mat3f
 	ColorScale ColorScale
+	TabWidth   uint
 }
 
 func DebugText(dest *Image, text string, opts *DebugTextOptions) {
@@ -15,14 +16,19 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 		opts = &DebugTextOptions{}
 	}
 
-	// switch to sprite rendering, as text rendering is just using the
-	// sprite pipeline for now
-	switchToCommand(spriteCommand.Get())
+	var tabWidth uint = 8
+	if opts.TabWidth > 0 {
+		tabWidth = opts.TabWidth
+	}
 
-	err := textCommand.Get().DrawText(dest.renderTarget, pulse.DrawTextOptions{
+	textCommand := textCommand.Get()
+	SwitchToCommand(textCommand)
+
+	err := textCommand.DrawText(dest.renderTarget, pulse.DrawTextOptions{
 		Text:      text,
 		Transform: opts.Transform,
 		Color:     opts.ColorScale.ToColor(),
+		TabWidth:  tabWidth,
 	})
 	handle(err, "render text")
 }

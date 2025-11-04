@@ -1,7 +1,10 @@
 package orion
 
-func handle(err error, desc string) {
+import "fmt"
+
+func handle(err error, desc string, args ...any) {
 	if err != nil {
-		panic(desc + ": " + err.Error())
+		text := fmt.Sprintf(desc, args...)
+		panic(text + ": " + err.Error())
 	}
 }

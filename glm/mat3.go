@@ -6,7 +6,7 @@ type Mat3[T numeric] struct {
 	values [3][3]T
 }
 
-func mat3[T numeric](m [3][3]T) Mat3[T] {
+func Mat3Of[T numeric](m [3][3]T) Mat3[T] {
 	const one = 1
 	const zer = 0
 
@@ -25,7 +25,7 @@ func IdentityMat3[T numeric]() Mat3[T] {
 }
 
 func TranslationMat3[T numeric](x, y T) Mat3[T] {
-	return mat3([3][3]T{
+	return Mat3Of([3][3]T{
 		{1, 0, 0},
 		{0, 1, 0},
 		{x, y, 1},
@@ -35,7 +35,7 @@ func TranslationMat3[T numeric](x, y T) Mat3[T] {
 func RotationMat3[T numeric](angle Rad) Mat3[T] {
 	s, c := fastSincos(angle)
 
-	return mat3([3][3]T{
+	return Mat3Of([3][3]T{
 		{T(c), T(s), 0},
 		{-T(s), T(c), 0},
 		{0, 0, 1},
@@ -43,7 +43,7 @@ func RotationMat3[T numeric](angle Rad) Mat3[T] {
 }
 
 func ScaleMat3[T numeric](x, y T) Mat3[T] {
-	return mat3([3][3]T{
+	return Mat3Of([3][3]T{
 		{x, 0, 0},
 		{0, y, 0},
 		{0, 0, 1},
@@ -66,7 +66,7 @@ func (lhs Mat3[T]) Translate(x, y T) Mat3[T] {
 }
 
 func (lhs Mat3[T]) Mul(rhs Mat3[T]) Mat3[T] {
-	return mat3([3][3]T{
+	return Mat3Of([3][3]T{
 		{
 			lhs.m00()*rhs.m00() + lhs.m10()*rhs.m01() + lhs.m20()*rhs.m02(),
 			lhs.m01()*rhs.m00() + lhs.m11()*rhs.m01() + lhs.m21()*rhs.m02(),
@@ -108,7 +108,7 @@ func (lhs Mat3[T]) Transpose() Mat3[T] {
 	// 1  4  7
 	// 2  5  8
 
-	return mat3([3][3]T{
+	return Mat3Of([3][3]T{
 		{lhs.m00(), lhs.m10(), lhs.m20()},
 		{lhs.m01(), lhs.m11(), lhs.m21()},
 		{lhs.m02(), lhs.m12(), lhs.m22()},

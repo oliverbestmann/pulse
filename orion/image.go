@@ -54,7 +54,7 @@ func asImage(texture *pulse.Texture) *Image {
 
 func (i *Image) Clear(color Color) {
 	clr := clearCommand.Get()
-	switchToCommand(clr)
+	SwitchToCommand(clr)
 
 	err := clr.Clear(i.renderTarget, color)
 	handle(err, "clear image")
@@ -83,7 +83,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	}
 
 	sprites := spriteCommand.Get()
-	switchToCommand(sprites)
+	SwitchToCommand(sprites)
 
 	transform := glm.ScaleMat3[float32](source.Size().XY())
 

@@ -37,3 +37,9 @@ func (g *global[T]) reset() {
 	g.value = tZero
 	g.hasValue = false
 }
+
+// CurrentContext exposes the current webgpu context. This can be used
+// to build your own pipelines and render passes.
+func CurrentContext() *pulse.Context {
+	return currentContext.Get()
+}

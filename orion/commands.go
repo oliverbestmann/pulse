@@ -25,25 +25,27 @@ func initializeCommands(ctx *pulse.Context) {
 	textCommand.set(text)
 }
 
-type command interface {
+type Command interface {
 	Flush() error
 }
 
-var previousCommand command
+var currentCommand Command
 
-func switchToCommand(next command) {
-	if previousCommand != next {
-		flushCommand()
+// SwitchToCommand flushes the current command and records `next`
+// as the new current command.
+func SwitchToCommand(next Command) {
+	if currentCommand != next && currentCommand != nil {
+		flushCurrentCommand()
 	}
 
-	previousCommand = next
+	currentCommand = next
 }
 
-func flushCommand() {
-	defer func() { previousCommand = nil }()
+func flushCurrentCommand() {
+	if currentCommand != nil {
+		defer func() { currentCommand = nil }()
 
-	if previousCommand != nil {
-		err := previousCommand.Flush()
+		err := currentCommand.Flush()
 		handle(err, "flush pending commands")
 	}
 }
