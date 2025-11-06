@@ -5,38 +5,72 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glimpse"
+	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
 )
 
 type LoopState struct {
-	Window glimpse.Window
-	Game   Game
-	Width  uint32
-	Height uint32
+	Window        glimpse.Window
+	Game          Game
+	SurfaceWidth  uint32
+	SurfaceHeight uint32
+	Initialized   bool
+
+	Canvas *Image
 }
 
 func loopOnce(viewState *pulse.View, loopState *LoopState) error {
+	if !loopState.Initialized {
+		loopState.Initialized = true
+
+		if err := loopState.Game.Initialize(); err != nil {
+			return fmt.Errorf("initialize game: %w", err)
+		}
+	}
+
+	// get surface size for next frame
+	surfaceWidth, surfaceHeight := loopState.Window.GetSize()
+
+	// reconfigure surface if needed
+	if loopState.SurfaceWidth != surfaceWidth || loopState.SurfaceHeight != surfaceHeight {
+		slog.Debug("Resize surface",
+			slog.Int("width", int(surfaceWidth)),
+			slog.Int("height", int(surfaceHeight)),
+		)
+
+		if err := viewState.Configure(surfaceWidth, surfaceHeight); err != nil {
+			return fmt.Errorf("resize surface: %w", err)
+		}
+
+		loopState.SurfaceWidth = surfaceWidth
+		loopState.SurfaceHeight = surfaceHeight
+	}
+
+	// get requested layout
+	layout := loopState.Game.
+		Layout(surfaceWidth, surfaceHeight).
+		withDefaults(surfaceWidth, surfaceHeight)
+
+	// request a new surface if needed
+	if !layoutIsCompatible(layout, loopState.Canvas) {
+		loopState.Canvas = NewImage(layout.Width, layout.Height, &NewImageOptions{
+			Label:  "OffscreenTarget",
+			Format: layout.Format,
+			MSAA:   layout.MSAA,
+		})
+	}
+
 	if err := loopState.Game.Update(); err != nil {
 		return fmt.Errorf("update game: %w", err)
 	}
 
-	newWidth, newHeight := loopState.Window.GetSize()
-	if loopState.Width != newWidth || loopState.Height != newHeight {
-		loopState.Width = newWidth
-		loopState.Height = newHeight
+	// draw to canvas first
+	loopState.Game.Draw(loopState.Canvas)
 
-		slog.Debug("Resize screen",
-			slog.Int("width", int(newWidth)),
-			slog.Int("height", int(newHeight)),
-		)
-
-		if err := viewState.Configure(newWidth, newHeight); err != nil {
-			panic(fmt.Errorf("SizeChanged: %w", err))
-		}
-	}
-
-	err := render(viewState, loopState.Game)
+	// finalize drawing
+	err := present(viewState, loopState.Canvas, finalizeDrawScreenOf(loopState.Game))
 	if err != nil {
 		fmt.Println("error occurred while rendering:", err)
 
@@ -53,10 +87,10 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) error {
 	return nil
 }
 
-func render(ctx *pulse.View, game Game) error {
+func present(ctx *pulse.View, canvas *Image, draw FinalizeDrawScreen) error {
 	screen, err := ctx.Surface.GetCurrentTexture()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("get current texture: %w", err)
 	}
 
 	screenGuard := pulse.NewReleaseGuard(screen)
@@ -69,8 +103,11 @@ func render(ctx *pulse.View, game Game) error {
 
 	defer screenView.Release()
 
-	screenTexture := ctx.AsTexture(screen, screenView)
-	game.Draw(asImage(screenTexture))
+	surfaceTexture := ctx.AsTexture(screen, screenView)
+	surfaceImage := asImage(surfaceTexture)
+
+	// then paint canvas to the screen surface
+	draw(surfaceImage, canvas)
 
 	// flushes any outstanding pipelines
 	SwitchToCommand(nil)
@@ -82,4 +119,49 @@ func render(ctx *pulse.View, game Game) error {
 	screenGuard.Keep()
 
 	return nil
+}
+
+func layoutIsCompatible(layout LayoutOptions, canvas *Image) bool {
+	return canvas != nil &&
+		canvas.Width() == layout.Width &&
+		canvas.Height() == layout.Height &&
+		canvas.Format() == layout.Format &&
+		canvas.MSAA() == layout.MSAA
+}
+
+type FinalizeDrawScreen = func(screen, canvas *Image)
+
+func finalizeDrawScreenOf(game Game) FinalizeDrawScreen {
+	if game, ok := game.(GameWithFinalizeDrawScreen); ok {
+		return game.FinalizeDrawScreen
+	}
+
+	return DefaultFinalizeDrawScreen
+}
+
+func DefaultFinalizeDrawScreen(screen, canvas *Image) {
+	cw, ch := canvas.Size().XY()
+	sw, sh := screen.Size().XY()
+
+	canvasAspect := cw / ch
+	screenAspect := sw / sh
+
+	var scale float32
+	var xOffset, yOffset float32 = 1, 1
+
+	if canvasAspect >= screenAspect {
+		scale = sw / cw
+		yOffset = (sh - ch*scale) / 2
+	} else {
+		scale = sh / ch
+		xOffset = (sw - cw*scale) / 2
+	}
+
+	tr := glm.TranslationMat3(xOffset, yOffset).Scale(scale, scale)
+
+	screen.DrawImage(canvas, &DrawImageOptions{
+		Transform:  tr,
+		FilterMode: wgpu.FilterModeLinear,
+		BlendState: wgpu.BlendStateReplace,
+	})
 }

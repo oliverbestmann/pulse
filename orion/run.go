@@ -15,9 +15,6 @@ type RunGameOptions struct {
 	WindowWidth  int
 	WindowHeight int
 	WindowTitle  string
-
-	// enable MSAA rendering for the windows render target
-	MSAA bool
 }
 
 func RunGame(opts RunGameOptions) error {
@@ -59,7 +56,7 @@ func RunGame(opts RunGameOptions) error {
 	defer ctx.Release()
 
 	// initialize the view
-	view, err := pulse.NewView(ctx, opts.MSAA)
+	view, err := pulse.NewView(ctx, false)
 	if err != nil {
 		return fmt.Errorf("create view: %w", err)
 	}
@@ -71,10 +68,6 @@ func RunGame(opts RunGameOptions) error {
 	currentView.set(view)
 
 	initializeCommands(ctx)
-
-	if err := game.Initialize(); err != nil {
-		return fmt.Errorf("initialize game: %w", err)
-	}
 
 	loopState := &LoopState{
 		Window: win,

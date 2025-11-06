@@ -1,12 +1,26 @@
 struct Particle {
     transform: mat3x3<f32>,
+    color: vec4f,
     velocity: vec2f,
 }
+
+struct SpriteInstance {
+    color: array<f32, 4>,
+
+    uv_offset: array<f32, 2>,
+    uv_scale: array<f32, 2>,
+
+    tr_row0: array<f32, 3>,
+    tr_row1: array<f32, 3>,
+};
 
 @group(0) @binding(0)
 var<storage, read_write> data: array<Particle>;
 
 @group(0) @binding(1)
+var<storage, read_write> sprites: array<SpriteInstance>;
+
+@group(0) @binding(2)
 var<uniform> timestep: f32;
 
 @compute @workgroup_size(1)
@@ -20,4 +34,27 @@ fn update_particles(
 
   // move the particle
   data[i].transform = translate * data[i].transform;
+
+  // write to output buffer
+  sprites[i].color = array(
+    data[i].color.r,
+    data[i].color.g,
+    data[i].color.b,
+    data[i].color.a,
+  );
+
+  sprites[i].uv_offset[0] = 0;
+  sprites[i].uv_offset[1] = 0;
+
+  sprites[i].uv_scale[0] = 1;
+  sprites[i].uv_scale[1] = 1;
+
+  let tr = transpose(data[i].transform);
+  sprites[i].tr_row0[0] = tr[0].x;
+  sprites[i].tr_row0[1] = tr[0].y;
+  sprites[i].tr_row0[2] = tr[0].z;
+
+  sprites[i].tr_row1[0] = tr[1].x;
+  sprites[i].tr_row1[1] = tr[1].y;
+  sprites[i].tr_row1[2] = tr[1].z;
 }

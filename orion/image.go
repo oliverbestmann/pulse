@@ -70,6 +70,9 @@ type DrawImageOptions struct {
 	// BlendState defines how to blend the image with the
 	// existing framebuffer. The default is BlendStateDefault.
 	BlendState wgpu.BlendState
+
+	// FilterMode defaults to linear
+	FilterMode wgpu.FilterMode
 }
 
 func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
@@ -82,19 +85,54 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 		blendState = BlendStateDefault
 	}
 
+	var filterMode = opts.FilterMode
+	if filterMode == wgpu.FilterModeUndefined {
+		filterMode = wgpu.FilterModeLinear
+	}
+
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
 	err := sprites.Draw(i.renderTarget, source.texture, pulse.DrawSpriteOptions{
 		Transform:    opts.Transform,
 		Color:        opts.ColorScale.ToColor(),
-		FilterMode:   wgpu.FilterModeLinear,
+		FilterMode:   filterMode,
 		BlendState:   blendState,
 		AddressModeU: wgpu.AddressModeClampToEdge,
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	})
 
 	Handle(err, "draw image")
+}
+
+func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount uint, opts *DrawImageOptions) {
+	if opts == nil {
+		opts = &DrawImageOptions{}
+	}
+
+	var blendState = opts.BlendState
+	if blendState == (wgpu.BlendState{}) {
+		blendState = BlendStateDefault
+	}
+
+	var filterMode = opts.FilterMode
+	if filterMode == wgpu.FilterModeUndefined {
+		filterMode = wgpu.FilterModeLinear
+	}
+
+	sprites := spriteCommand.Get()
+	SwitchToCommand(sprites)
+
+	err := sprites.DrawFromGPU(i.renderTarget, source.texture, pulse.DrawSpriteFromGPUOptions{
+		Buffer:        buf,
+		InstanceCount: particleCount,
+		FilterMode:    filterMode,
+		BlendState:    blendState,
+		AddressModeU:  wgpu.AddressModeClampToEdge,
+		AddressModeV:  wgpu.AddressModeClampToEdge,
+	})
+
+	Handle(err, "draw image from gpu buffer")
 }
 
 func (i *Image) Size() glm.Vec2f {
@@ -107,6 +145,14 @@ func (i *Image) Width() uint32 {
 
 func (i *Image) Height() uint32 {
 	return i.texture.Height()
+}
+
+func (i *Image) Format() wgpu.TextureFormat {
+	return i.texture.Format()
+}
+
+func (i *Image) MSAA() bool {
+	return i.texture.MSAA()
 }
 
 func DecodeImageFromBytes(buf []byte) (*Image, error) {

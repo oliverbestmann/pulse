@@ -160,16 +160,67 @@ func (p *SpriteCommand) Draw(dest *RenderTarget, source *Texture, opts DrawSprit
 	return nil
 }
 
-func (p *SpriteCommand) Flush() error {
-	defer p.reset()
+type DrawSpriteFromGPUOptions struct {
+	Buffer        *wgpu.Buffer
+	InstanceCount uint
 
+	FilterMode   wgpu.FilterMode
+	BlendState   wgpu.BlendState
+	AddressModeU wgpu.AddressMode
+	AddressModeV wgpu.AddressMode
+	Shader       string
+}
+
+func (p *SpriteCommand) DrawFromGPU(dest *RenderTarget, source *Texture, opts DrawSpriteFromGPUOptions) error {
+	if err := p.Flush(); err != nil {
+		return fmt.Errorf("flush: %w", err)
+	}
+
+	if opts.Shader == "" {
+		opts.Shader = spriteShaderCode
+	}
+
+	p.batchConfig = spriteBatchConfig{
+		target:       dest,
+		texture:      source.SourceView(),
+		sourceWidth:  source.Width(),
+		sourceHeight: source.Height(),
+		filterMode:   opts.FilterMode,
+		blendState:   opts.BlendState,
+		addressModeU: opts.AddressModeU,
+		addressModeV: opts.AddressModeV,
+		shader:       opts.Shader,
+	}
+
+	return p.flushWith(opts.Buffer, uint32(opts.InstanceCount))
+
+}
+
+func (p *SpriteCommand) Flush() error {
 	if len(p.instances) == 0 {
 		return nil
 	}
 
+	slog.Debug("Rendering sprites", slog.Int("instanceCount", len(p.instances)))
+
+	queue := p.ctx.GetQueue()
+	defer queue.Release()
+
+	err := queue.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
+	if err != nil {
+		return fmt.Errorf("update instance buffer: %w", err)
+	}
+
+	return p.flushWith(p.bufInstances, uint32(len(p.instances)))
+}
+
+func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) error {
+	defer p.reset()
+
 	batchConfig := p.batchConfig
 
-	slog.Debug("Rendering sprites", slog.Int("instanceCount", len(p.instances)))
+	queue := p.ctx.GetQueue()
+	defer queue.Release()
 
 	descSampler := wgpu.SamplerDescriptor{
 		Label:         "UserTex-Sampler",
@@ -236,14 +287,6 @@ func (p *SpriteCommand) Flush() error {
 
 	defer bindGroup.Release()
 
-	queue := p.ctx.GetQueue()
-	defer queue.Release()
-
-	err = queue.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
-	if err != nil {
-		return fmt.Errorf("update instance buffer: %w", err)
-	}
-
 	// build a new view transform
 	vw, vh := batchConfig.target.Width, batchConfig.target.Height
 	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
@@ -290,9 +333,9 @@ func (p *SpriteCommand) Flush() error {
 
 	pass.SetPipeline(pipeline)
 	pass.SetBindGroup(0, bindGroup, nil)
-	pass.SetVertexBuffer(0, p.bufInstances, 0, wgpu.WholeSize)
+	pass.SetVertexBuffer(0, instances, 0, wgpu.WholeSize)
 	pass.SetIndexBuffer(p.bufIndices, wgpu.IndexFormatUint16, 0, wgpu.WholeSize)
-	pass.DrawIndexed(6, uint32(len(p.instances)), 0, 0, 0)
+	pass.DrawIndexed(6, instanceCount, 0, 0, 0)
 	if err := pass.End(); err != nil {
 		return err
 	}

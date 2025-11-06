@@ -37,6 +37,20 @@ func (lhs Vec2[T]) Sub(rhs Vec2[T]) Vec2[T] {
 	}
 }
 
+func (lhs Vec2[T]) Mul(rhs Vec2[T]) Vec2[T] {
+	return Vec2[T]{
+		lhs[0] * rhs[0],
+		lhs[1] * rhs[1],
+	}
+}
+
+func (lhs Vec2[T]) Div(rhs Vec2[T]) Vec2[T] {
+	return Vec2[T]{
+		lhs[0] / rhs[0],
+		lhs[1] / rhs[1],
+	}
+}
+
 func (lhs Vec2[T]) Extend(z T) Vec3[T] {
 	return Vec3[T]{lhs[0], lhs[1], z}
 }

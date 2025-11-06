@@ -220,6 +220,14 @@ func (t *Texture) SourceView() *wgpu.TextureView {
 	return t.textureView
 }
 
+func (t *Texture) Format() wgpu.TextureFormat {
+	return t.texture.GetFormat()
+}
+
+func (t *Texture) MSAA() bool {
+	return t.texture.GetSampleCount() > 1
+}
+
 func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
 	src, _, err := image.Decode(bytes.NewReader(buf))
 	if err != nil {

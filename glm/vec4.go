@@ -56,6 +56,14 @@ func (lhs Vec4[T]) Mul(rhs Vec4[T]) Vec4[T] {
 	}
 }
 
+func (lhs Vec4[T]) Div(rhs Vec4[T]) Vec4[T] {
+	return Vec4[T]{
+		lhs[0] / rhs[0],
+		lhs[1] / rhs[1],
+		lhs[2] / rhs[2],
+		lhs[3] / rhs[3],
+	}
+}
 func (lhs Vec4[T]) Truncate() Vec3[T] {
 	return Vec3[T]{lhs[0], lhs[1], lhs[2]}
 }
@@ -73,4 +81,13 @@ func (lhs Vec4[T]) XYZW() (x, y, z, w T) {
 	z = lhs[2]
 	w = lhs[3]
 	return
+}
+
+func (lhs Vec4[T]) ToWGPU() [4]float32 {
+	return [4]float32{
+		float32(lhs[0]),
+		float32(lhs[1]),
+		float32(lhs[2]),
+		float32(lhs[3]),
+	}
 }
