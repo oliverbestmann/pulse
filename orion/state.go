@@ -8,6 +8,7 @@ import (
 var currentWindow global[glimpse.Window]
 var currentContext global[*pulse.Context]
 var currentView global[*pulse.View]
+var currentInputState global[glimpse.InputState]
 
 type global[T any] struct {
 	value    T
@@ -24,18 +25,18 @@ func (g *global[T]) set(value T) *global[T] {
 	return g
 }
 
+func (g *global[T]) reset() {
+	var tZero T
+	g.value = tZero
+	g.hasValue = false
+}
+
 func (g *global[T]) Get() T {
 	if !g.hasValue {
 		panic("must only be called after RunGame")
 	}
 
 	return g.value
-}
-
-func (g *global[T]) reset() {
-	var tZero T
-	g.value = tZero
-	g.hasValue = false
 }
 
 // CurrentContext exposes the current webgpu context. This can be used

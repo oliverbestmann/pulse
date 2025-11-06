@@ -74,8 +74,8 @@ func RunGame(opts RunGameOptions) error {
 		Game:   game,
 	}
 
-	return win.Run(func() error {
+	return win.Run(func(inputState glimpse.UpdateInputState) error {
 		// do the actual rendering here
-		return loopOnce(view, loopState)
+		return loopOnce(view, loopState, inputState)
 	})
 }

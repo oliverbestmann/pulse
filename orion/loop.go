@@ -21,15 +21,7 @@ type LoopState struct {
 	Canvas *Image
 }
 
-func loopOnce(viewState *pulse.View, loopState *LoopState) error {
-	if !loopState.Initialized {
-		loopState.Initialized = true
-
-		if err := loopState.Game.Initialize(); err != nil {
-			return fmt.Errorf("initialize game: %w", err)
-		}
-	}
-
+func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.UpdateInputState) error {
 	// get surface size for next frame
 	surfaceWidth, surfaceHeight := loopState.Window.GetSize()
 
@@ -62,6 +54,23 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) error {
 		})
 	}
 
+	screen, err := CurrentContext().Surface.GetCurrentTexture()
+	if err != nil {
+		return fmt.Errorf("get current texture: %w", err)
+	}
+
+	// get input after waiting for a texture to keep input lag low
+	currentInputState.reset()
+	currentInputState.set(inputState())
+
+	if !loopState.Initialized {
+		loopState.Initialized = true
+
+		if err := loopState.Game.Initialize(); err != nil {
+			return fmt.Errorf("initialize game: %w", err)
+		}
+	}
+
 	if err := loopState.Game.Update(); err != nil {
 		return fmt.Errorf("update game: %w", err)
 	}
@@ -70,7 +79,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) error {
 	loopState.Game.Draw(loopState.Canvas)
 
 	// finalize drawing
-	err := present(viewState, loopState.Canvas, finalizeDrawScreenOf(loopState.Game))
+	err = present(viewState, screen, loopState.Canvas, finalizeDrawScreenOf(loopState.Game))
 	if err != nil {
 		fmt.Println("error occurred while rendering:", err)
 
@@ -87,12 +96,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState) error {
 	return nil
 }
 
-func present(ctx *pulse.View, canvas *Image, draw FinalizeDrawScreen) error {
-	screen, err := ctx.Surface.GetCurrentTexture()
-	if err != nil {
-		return fmt.Errorf("get current texture: %w", err)
-	}
-
+func present(ctx *pulse.View, screen *wgpu.Texture, canvas *Image, draw FinalizeDrawScreen) error {
 	screenGuard := pulse.NewReleaseGuard(screen)
 	defer screenGuard.Release()
 
