@@ -46,6 +46,9 @@ func NewView(dev *Context, msaa bool) (st *View, err error) {
 		Format:      wgpu.TextureFormatBGRA8Unorm,
 		PresentMode: wgpu.PresentModeFifo,
 		AlphaMode:   caps.AlphaModes[0],
+
+		// try to reduce input latency
+		DesiredMaximumFrameLatency: 1,
 	}
 
 	return st, nil
