@@ -17,6 +17,14 @@ func MousePositionRaw() glm.Vec2f {
 	}
 }
 
+func MousePosition() glm.Vec2f {
+	raw := MousePositionRaw()
+
+	return currentScreenTransformInv.Get().
+		Transform(raw.Extend(1)).
+		Truncate()
+}
+
 func IsKeyPressed(key KeyCode) bool {
 	inputState := currentInputState.Get()
 	return inputState.Keys.Pressed[key]

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"runtime"
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
@@ -18,8 +17,7 @@ type Texture struct {
 	texture     *wgpu.Texture
 	textureView *wgpu.TextureView
 
-	resolveTarget     *wgpu.Texture
-	resolveTargetView *wgpu.TextureView
+	resolveTarget *Texture
 
 	format      wgpu.TextureFormat
 	sampleCount uint32
@@ -82,39 +80,26 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 		return nil, err
 	}
 
-	var resolveTarget *wgpu.Texture
-	var resolveTargetView *wgpu.TextureView
+	var resolveTarget *Texture
 
 	if desc.SampleCount > 1 {
 		// create resolve target texture
 		descResolve := *desc
 		descResolve.SampleCount = 1
 
-		resolveTarget, err = ctx.Device.CreateTexture(&descResolve)
+		resolveTarget, err = NewTextureFromDesc(ctx, &descResolve)
 		if err != nil {
 			textureView.Release()
 			texture.Release()
 
-			return nil, err
-		}
-
-		// now create a default texture view
-		resolveTargetView, err = resolveTarget.CreateView(nil)
-		if err != nil {
-			textureView.Release()
-			texture.Release()
-
-			resolveTarget.Release()
-
-			return nil, err
+			return nil, fmt.Errorf("create resolveTarget texture: %w", err)
 		}
 	}
 
 	t := &Texture{
-		texture:           texture,
-		textureView:       textureView,
-		resolveTarget:     resolveTarget,
-		resolveTargetView: resolveTargetView,
+		texture:       texture,
+		textureView:   textureView,
+		resolveTarget: resolveTarget,
 
 		format:      desc.Format,
 		width:       desc.Size.Width,
@@ -125,37 +110,18 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	// texture itself is the root
 	t.root = t
 
-	runtime.SetFinalizer(t, func(t *Texture) {
-		if t.root != t {
-			return
-		}
-
-		// release wgpu texture instance
-		t.textureView.Release()
-		t.texture.Release()
-
-		if t.resolveTarget != nil {
-			t.resolveTarget.Release()
-		}
-
-		if t.resolveTargetView != nil {
-			t.resolveTargetView.Release()
-		}
-	})
-
 	return t, nil
 }
 
-func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *wgpu.Texture, resolveTargetView *wgpu.TextureView) *Texture {
+func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *Texture) *Texture {
 	t := &Texture{
-		texture:           texture,
-		textureView:       textureView,
-		resolveTarget:     resolveTarget,
-		resolveTargetView: resolveTargetView,
-		format:            texture.GetFormat(),
-		sampleCount:       texture.GetSampleCount(),
-		width:             texture.GetWidth(),
-		height:            texture.GetHeight(),
+		texture:       texture,
+		textureView:   textureView,
+		resolveTarget: resolveTarget,
+		format:        texture.GetFormat(),
+		sampleCount:   texture.GetSampleCount(),
+		width:         texture.GetWidth(),
+		height:        texture.GetHeight(),
 	}
 
 	t.root = t
@@ -202,19 +168,24 @@ func (t *Texture) SubTexture(pos glm.Vec2[uint32], size glm.Vec2[uint32]) *Textu
 }
 
 func (t *Texture) AsRenderTarget() *RenderTarget {
+	var resolveTargetView *wgpu.TextureView
+	if t.resolveTarget != nil {
+		resolveTargetView = t.resolveTarget.textureView
+	}
+
 	return &RenderTarget{
 		View:          t.textureView,
 		Format:        t.format,
 		Width:         t.width,
 		Height:        t.height,
 		SampleCount:   t.sampleCount,
-		ResolveTarget: t.resolveTargetView,
+		ResolveTarget: resolveTargetView,
 	}
 }
 
 func (t *Texture) SourceView() *wgpu.TextureView {
-	if t.resolveTargetView != nil {
-		return t.resolveTargetView
+	if t.resolveTarget != nil {
+		return t.resolveTarget.textureView
 	}
 
 	return t.textureView
@@ -226,6 +197,11 @@ func (t *Texture) Format() wgpu.TextureFormat {
 
 func (t *Texture) MSAA() bool {
 	return t.texture.GetSampleCount() > 1
+}
+
+func (t *Texture) Release() {
+	t.textureView.Release()
+	t.texture.Release()
 }
 
 func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {

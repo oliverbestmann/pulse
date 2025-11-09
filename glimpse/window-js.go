@@ -10,13 +10,14 @@ import (
 
 type jsWindow struct {
 	canvas js.Value
+	input  InputState
 }
 
 func NewWindow(width, height int, title string) (Window, error) {
 	document := js.Global().Get("document")
+
 	canvas := document.Call("createElement", "canvas")
 	document.Get("body").Call("appendChild", canvas)
-
 	document.Set("title", title)
 
 	canvas.Set("style", "width:100vw; height:100vh")
@@ -24,6 +25,38 @@ func NewWindow(width, height int, title string) (Window, error) {
 	win := &jsWindow{
 		canvas: canvas,
 	}
+
+	canvas.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
+		scale := devicePixelRatio()
+		pageX := args[0].Get("pageX").Float() * scale
+		pageY := args[0].Get("pageY").Float() * scale
+		win.input.Mouse.position(float32(pageX), float32(pageY))
+		return nil
+	}))
+
+	canvas.Call("addEventListener", "pointerdown", js.FuncOf(func(this js.Value, args []js.Value) any {
+		win.input.Mouse.press(MouseButton(0))
+		return nil
+	}))
+
+	canvas.Call("addEventListener", "pointerup", js.FuncOf(func(this js.Value, args []js.Value) any {
+		win.input.Mouse.release(MouseButton(0))
+		return nil
+	}))
+
+	document.Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
+		jsCode := args[0].Get("keyCode").Int()
+		keyCode := KeyCode(jsCode)
+		win.input.Keys.press(keyCode)
+		return nil
+	}))
+
+	document.Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
+		jsCode := args[0].Get("keyCode").Int()
+		keyCode := KeyCode(jsCode)
+		win.input.Keys.release(keyCode)
+		return nil
+	}))
 
 	return win, nil
 }
@@ -53,16 +86,22 @@ func (g *jsWindow) Terminate() {
 	// do nothing
 }
 
-func (g *jsWindow) Run(render func() error) error {
+func (g *jsWindow) Run(render func(inputState UpdateInputState) error) error {
+	var updateInputState UpdateInputState = func() InputState {
+		return g.input
+	}
+
 	errCh := make(chan error, 1)
 
 	renderOnce := func() bool {
 		resizeCanvas(g.canvas)
 
-		if err := render(); err != nil {
+		if err := render(updateInputState); err != nil {
 			errCh <- err
 			return false
 		}
+
+		g.input.nextTick()
 
 		return true
 	}

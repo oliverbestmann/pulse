@@ -10,7 +10,7 @@ func CreateShaderModule(descriptor wgpu.ShaderModuleDescriptor) *wgpu.ShaderModu
 	res, err := ctx.CreateShaderModule(&descriptor)
 	Handle(err, "create shader module %q", descriptor.Label)
 
-	return RegisterWithGC(res)
+	return res
 }
 
 func CreateComputePipeline(descriptor wgpu.ComputePipelineDescriptor) *wgpu.ComputePipeline {
@@ -19,7 +19,7 @@ func CreateComputePipeline(descriptor wgpu.ComputePipelineDescriptor) *wgpu.Comp
 	res, err := ctx.CreateComputePipeline(&descriptor)
 	Handle(err, "create compute pipeline")
 
-	return RegisterWithGC(res)
+	return res
 }
 
 func CreateBindGroup(descriptor wgpu.BindGroupDescriptor) *wgpu.BindGroup {
@@ -28,13 +28,13 @@ func CreateBindGroup(descriptor wgpu.BindGroupDescriptor) *wgpu.BindGroup {
 	res, err := ctx.CreateBindGroup(&descriptor)
 	Handle(err, "create bind group %q", descriptor.Label)
 
-	return RegisterWithGC(res)
+	return res
 }
 
 func GetQueue() *wgpu.Queue {
 	ctx := CurrentContext()
 	queue := ctx.GetQueue()
-	return RegisterWithGC(queue)
+	return queue
 }
 
 type CommandEncoder struct {
@@ -48,8 +48,6 @@ func CreateCommandEncoder(label string) CommandEncoder {
 	desc := wgpu.CommandEncoderDescriptor{Label: label}
 	res, err := ctx.CreateCommandEncoder(&desc)
 	Handle(err, "create command encoder %q", label)
-
-	RegisterWithGC(res)
 
 	return CommandEncoder{
 		CommandEncoder: res,
@@ -85,7 +83,7 @@ func (enc *CommandEncoder) Finish() *wgpu.CommandBuffer {
 	buf, err := enc.CommandEncoder.Finish(&wgpu.CommandBufferDescriptor{Label: enc.label})
 	Handle(err, "finish command encoder %q", enc.label)
 
-	return RegisterWithGC(buf)
+	return buf
 }
 
 func (enc *CommandEncoder) Submit() {

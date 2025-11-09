@@ -11,8 +11,6 @@ func CreateBuffer(desc wgpu.BufferDescriptor) *wgpu.Buffer {
 	buf, err := ctx.CreateBuffer(&desc)
 	Handle(err, "create buffer label=%q", desc.Label)
 
-	RegisterWithGC(buf)
-
 	return buf
 }
 
@@ -22,8 +20,6 @@ func CreateBufferInit(desc wgpu.BufferInitDescriptor) *wgpu.Buffer {
 	// allocate a buffer to write to
 	buf, err := ctx.CreateBufferInit(&desc)
 	Handle(err, "create and init buffer label=%q", desc.Label)
-
-	RegisterWithGC(buf)
 
 	return buf
 }

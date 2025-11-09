@@ -64,23 +64,26 @@ func (vs *View) AsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *T
 	// vs.surfaceConfig.Height
 
 	if vs.MSAA() {
+		screenTexture := ImportTexture(screen, screenView, nil)
+
 		return ImportTexture(
 			vs.msaaTexture.texture,
 			vs.msaaTexture.textureView,
-			screen,
-			screenView,
+			screenTexture,
 		)
 	} else {
 		return ImportTexture(
 			screen,
 			screenView,
 			nil,
-			nil,
 		)
 	}
 }
 
 func (vs *View) Release() {
+	if vs.depthTexture != nil {
+		vs.depthTexture.Release()
+	}
 	vs.depthTexture = nil
 	vs.msaaTexture = nil
 }
@@ -88,7 +91,7 @@ func (vs *View) Release() {
 func (vs *View) Configure(width, height uint32) error {
 	vs.surfaceConfig.Width = width
 	vs.surfaceConfig.Height = height
-	vs.Surface.Configure(vs.Adapter, vs.Device, vs.surfaceConfig)
+	vs.Surface.Configure(vs.Device, vs.surfaceConfig)
 
 	var err error
 

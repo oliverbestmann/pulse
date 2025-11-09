@@ -22,6 +22,8 @@ type LoopState struct {
 }
 
 func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.UpdateInputState) error {
+	DebugOverlay.StartFrame()
+
 	// get surface size for next frame
 	surfaceWidth, surfaceHeight := loopState.Window.GetSize()
 
@@ -54,14 +56,39 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 		})
 	}
 
+	DebugOverlay.StartGetCurrentTexture()
 	screen, err := CurrentContext().Surface.GetCurrentTexture()
 	if err != nil {
 		return fmt.Errorf("get current texture: %w", err)
 	}
 
+	defer func() {
+		if screen != nil {
+			screen.Release()
+		}
+	}()
+
+	screenTransform := DefaultScreenTransform(
+		glm.Vec2f{float32(screen.GetWidth()), float32(screen.GetHeight())},
+		loopState.Canvas.Size(),
+	)
+
+	screenTransformInv := DefaultScreenTransformInv(
+		glm.Vec2f{float32(screen.GetWidth()), float32(screen.GetHeight())},
+		loopState.Canvas.Size(),
+	)
+
 	// get input after waiting for a texture to keep input lag low
 	currentInputState.reset()
 	currentInputState.set(inputState())
+
+	currentScreenTransform.reset()
+	currentScreenTransform.set(screenTransform)
+
+	currentScreenTransformInv.reset()
+	currentScreenTransformInv.set(screenTransformInv)
+
+	DebugOverlay.StartGameUpdate()
 
 	if !loopState.Initialized {
 		loopState.Initialized = true
@@ -76,6 +103,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	}
 
 	// draw to canvas first
+	DebugOverlay.StartGameDraw()
 	loopState.Game.Draw(loopState.Canvas)
 
 	// finalize drawing
@@ -93,13 +121,15 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 		}
 	}
 
+	// we do not need to release the screen if present was successful
+	screen = nil
+
+	DebugOverlay.EndFrame()
+
 	return nil
 }
 
 func present(ctx *pulse.View, screen *wgpu.Texture, canvas *Image, draw FinalizeDrawScreen) error {
-	screenGuard := pulse.NewReleaseGuard(screen)
-	defer screenGuard.Release()
-
 	screenView, err := screen.CreateView(nil)
 	if err != nil {
 		return fmt.Errorf("get texture: %w", err)
@@ -119,9 +149,6 @@ func present(ctx *pulse.View, screen *wgpu.Texture, canvas *Image, draw Finalize
 	// present the rendered image
 	ctx.Surface.Present()
 
-	// no need to free the screen anymore
-	screenGuard.Keep()
-
 	return nil
 }
 
@@ -140,12 +167,14 @@ func finalizeDrawScreenOf(game Game) FinalizeDrawScreen {
 		return game.FinalizeDrawScreen
 	}
 
-	return DefaultFinalizeDrawScreen
+	return func(screen, canvas *Image) {
+		DefaultDrawScreen(screen, canvas, wgpu.FilterModeLinear)
+	}
 }
 
-func DefaultFinalizeDrawScreen(screen, canvas *Image) {
-	cw, ch := canvas.Size().XY()
-	sw, sh := screen.Size().XY()
+func DefaultScreenTransform(screenSize, canvasSize glm.Vec2f) glm.Mat3[float32] {
+	cw, ch := canvasSize.XY()
+	sw, sh := screenSize.XY()
 
 	canvasAspect := cw / ch
 	screenAspect := sw / sh
@@ -161,11 +190,35 @@ func DefaultFinalizeDrawScreen(screen, canvas *Image) {
 		xOffset = (sw - cw*scale) / 2
 	}
 
-	tr := glm.TranslationMat3(xOffset, yOffset).Scale(scale, scale)
+	return glm.TranslationMat3(xOffset, yOffset).Scale(scale, scale)
+}
 
+func DefaultScreenTransformInv(screenSize, canvasSize glm.Vec2f) glm.Mat3[float32] {
+	cw, ch := canvasSize.XY()
+	sw, sh := screenSize.XY()
+
+	canvasAspect := cw / ch
+	screenAspect := sw / sh
+
+	var scale float32
+	var xOffset, yOffset float32 = 1, 1
+
+	if canvasAspect >= screenAspect {
+		scale = sw / cw
+		yOffset = (sh - ch*scale) / 2
+	} else {
+		scale = sh / ch
+		xOffset = (sw - cw*scale) / 2
+	}
+
+	sm := glm.ScaleMat3(1.0/scale, 1.0/scale)
+	return sm.Mul(glm.TranslationMat3(-xOffset, -yOffset))
+}
+
+func DefaultDrawScreen(screen, canvas *Image, filter wgpu.FilterMode) {
 	screen.DrawImage(canvas, &DrawImageOptions{
-		Transform:  tr,
-		FilterMode: wgpu.FilterModeLinear,
+		Transform:  DefaultScreenTransform(screen.Size(), canvas.Size()),
+		FilterMode: filter,
 		BlendState: wgpu.BlendStateReplace,
 	})
 }

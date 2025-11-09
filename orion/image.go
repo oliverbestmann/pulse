@@ -155,6 +155,16 @@ func (i *Image) MSAA() bool {
 	return i.texture.MSAA()
 }
 
+func (i *Image) SubImage(x, y, width, height uint32) *Image {
+	pos := glm.Vec2[uint32]{x, y}
+	size := glm.Vec2[uint32]{width, height}
+
+	return &Image{
+		texture:      i.texture.SubTexture(pos, size),
+		renderTarget: i.renderTarget,
+	}
+}
+
 func DecodeImageFromBytes(buf []byte) (*Image, error) {
 	ctx := currentContext.Get()
 

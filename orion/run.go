@@ -53,6 +53,7 @@ func RunGame(opts RunGameOptions) error {
 		return fmt.Errorf("initializing wgpu: %w", err)
 	}
 
+	// TODO this crashes bad if surface is still in use
 	defer ctx.Release()
 
 	// initialize the view

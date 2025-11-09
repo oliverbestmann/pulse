@@ -2,6 +2,7 @@ package orion
 
 import (
 	"github.com/oliverbestmann/go3d/glimpse"
+	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
 )
 
@@ -9,6 +10,9 @@ var currentWindow global[glimpse.Window]
 var currentContext global[*pulse.Context]
 var currentView global[*pulse.View]
 var currentInputState global[glimpse.InputState]
+
+var currentScreenTransform global[glm.Mat3f]
+var currentScreenTransformInv global[glm.Mat3f]
 
 type global[T any] struct {
 	value    T
