@@ -10,6 +10,9 @@ import (
 	"github.com/oliverbestmann/go3d/glm"
 )
 
+// Texture wraps a wgpu.Texture and an identity wgpu.TextureView.
+// For multisample textures a Texture also holds the resolve target
+// texture. A Texture can represent a sub region of another texture.
 type Texture struct {
 	// point to root Texture this texture is a part of.
 	root *Texture
@@ -19,10 +22,14 @@ type Texture struct {
 
 	resolveTarget *Texture
 
-	format      wgpu.TextureFormat
+	// equal to texture.GetFormat()
+	format wgpu.TextureFormat
+
+	// equal to texture.GetSampleCount()
 	sampleCount uint32
 
-	x, y, width, height uint32
+	// sub texture
+	region Rectangle2u
 }
 
 type NewTextureOptions struct {
@@ -96,14 +103,21 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 		}
 	}
 
+	region := RectangleFromSize(
+		glm.Vec2[uint32]{},
+		glm.Vec2[uint32]{
+			desc.Size.Width,
+			desc.Size.Height,
+		},
+	)
+
 	t := &Texture{
 		texture:       texture,
 		textureView:   textureView,
 		resolveTarget: resolveTarget,
 
 		format:      desc.Format,
-		width:       desc.Size.Width,
-		height:      desc.Size.Height,
+		region:      region,
 		sampleCount: desc.SampleCount,
 	}
 
@@ -113,15 +127,32 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	return t, nil
 }
 
+// ImportTexture creates a texture from an existing wgpu.Texture and wgpu.TextureView. If it is a
+// multisample texture, you also need to specify a resolve target.
 func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *Texture) *Texture {
+	if texture.GetSampleCount() > 1 && resolveTarget == nil {
+		panic("no resolveTarget specified for multisample texture")
+	}
+
+	if texture.GetSampleCount() == 1 && resolveTarget != nil {
+		panic("resolveTarget specified for multisample texture")
+	}
+
+	region := RectangleFromSize(
+		glm.Vec2[uint32]{},
+		glm.Vec2[uint32]{
+			texture.GetWidth(),
+			texture.GetHeight(),
+		},
+	)
+
 	t := &Texture{
 		texture:       texture,
 		textureView:   textureView,
 		resolveTarget: resolveTarget,
 		format:        texture.GetFormat(),
 		sampleCount:   texture.GetSampleCount(),
-		width:         texture.GetWidth(),
-		height:        texture.GetHeight(),
+		region:        region,
 	}
 
 	t.root = t
@@ -129,58 +160,13 @@ func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolve
 	return t
 }
 
-func (t *Texture) Width() uint32 {
-	return t.width
-}
-
-func (t *Texture) Height() uint32 {
-	return t.height
-}
-
-func (t *Texture) Size() glm.Vec2f {
-	return glm.Vec2f{float32(t.width), float32(t.height)}
-}
-
-func (t *Texture) UVOffset() glm.Vec2f {
-	return glm.Vec2f{
-		float32(t.x) / float32(t.root.width),
-		float32(t.y) / float32(t.root.height),
-	}
-}
-
-func (t *Texture) UVScale() glm.Vec2f {
-	return glm.Vec2f{
-		float32(t.width) / float32(t.root.width),
-		float32(t.height) / float32(t.root.height),
-	}
-}
-
 func (t *Texture) SubTexture(pos glm.Vec2[uint32], size glm.Vec2[uint32]) *Texture {
 	sub := *t
 
-	posX, posY := pos.XY()
-	sub.x = t.x + posX
-	sub.y = t.y + posY
-
-	sub.width, sub.height = size.XY()
+	pos = t.region.Min.Add(pos)
+	sub.region = RectangleFromSize(pos, size)
 
 	return &sub
-}
-
-func (t *Texture) AsRenderTarget() *RenderTarget {
-	var resolveTargetView *wgpu.TextureView
-	if t.resolveTarget != nil {
-		resolveTargetView = t.resolveTarget.textureView
-	}
-
-	return &RenderTarget{
-		View:          t.textureView,
-		Format:        t.format,
-		Width:         t.width,
-		Height:        t.height,
-		SampleCount:   t.sampleCount,
-		ResolveTarget: resolveTargetView,
-	}
 }
 
 func (t *Texture) SourceView() *wgpu.TextureView {
@@ -191,6 +177,46 @@ func (t *Texture) SourceView() *wgpu.TextureView {
 	return t.textureView
 }
 
+func (t *Texture) Root() *Texture {
+	return t.root
+}
+
+func (t *Texture) Width() uint32 {
+	return t.region.Width()
+}
+
+func (t *Texture) Height() uint32 {
+	return t.region.Height()
+}
+
+func (t *Texture) Size() glm.Vec2[uint32] {
+	return t.region.Size()
+}
+
+// Widthf is a convenience function that returns Width() as float32
+func (t *Texture) Widthf() float32 {
+	return float32(t.region.Width())
+}
+
+// Heightf is a convenience function that returns Height() as float32
+func (t *Texture) Heightf() float32 {
+	return float32(t.region.Height())
+}
+
+// Sizef is a convenience function that returns Size() as float32
+func (t *Texture) Sizef() glm.Vec2f {
+	x, y := t.Size().XY()
+	return glm.Vec2f{float32(x), float32(y)}
+}
+
+func (t *Texture) UV() Rectangle2f {
+	rootSize := t.root.Sizef()
+	pos := glm.Vec2f{float32(t.region.Min[0]), float32(t.region.Min[1])}
+	uvOffset := pos.Div(rootSize)
+	uvSize := t.Sizef().Div(rootSize)
+	return RectangleFromSize(uvOffset, uvSize)
+}
+
 func (t *Texture) Format() wgpu.TextureFormat {
 	return t.texture.GetFormat()
 }
@@ -199,9 +225,37 @@ func (t *Texture) MSAA() bool {
 	return t.texture.GetSampleCount() > 1
 }
 
+func (t *Texture) ToWGPUTexture() *wgpu.Texture {
+	return t.texture
+}
+
+func (t *Texture) ToWGPUTextureView() *wgpu.TextureView {
+	return t.textureView
+}
+
+func (t *Texture) ResolveTarget() *Texture {
+	return t.resolveTarget
+}
+
+// Release releases the texture view. This only works for the root texture,
+// not for a sub texture. You must be sure to not use the texture after
+// calling release. It might be better to not call Release at all and let the
+// garbage collector handle cleanup.
 func (t *Texture) Release() {
-	t.textureView.Release()
-	t.texture.Release()
+	if t.root == t {
+		t.textureView.Release()
+		t.texture.Release()
+	}
+}
+
+func (t *Texture) Views() (view, resolveView *wgpu.TextureView) {
+	view = t.textureView
+
+	if t.sampleCount > 1 {
+		resolveView = t.resolveTarget.textureView
+	}
+
+	return
 }
 
 func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
@@ -232,13 +286,13 @@ func NewTextureFromImage(ctx *Context, src image.Image) (*Texture, error) {
 
 	layout := &wgpu.TexelCopyBufferLayout{
 		Offset:       0,
-		BytesPerRow:  t.width * 4,
-		RowsPerImage: t.height,
+		BytesPerRow:  t.Width() * 4,
+		RowsPerImage: t.Height(),
 	}
 
 	size := &wgpu.Extent3D{
-		Width:              t.width,
-		Height:             t.height,
+		Width:              t.Width(),
+		Height:             t.Height(),
 		DepthOrArrayLayers: 1,
 	}
 

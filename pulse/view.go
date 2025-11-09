@@ -83,7 +83,7 @@ func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureV
 	}
 }
 
-func (vs *View) Release() {
+func (vs *View) ReleaseTexture() {
 	if vs.depthTexture != nil {
 		vs.depthTexture.Release()
 	}
@@ -99,15 +99,8 @@ func (vs *View) Configure(width, height uint32) error {
 
 	var err error
 
-	// release depth texture
-	if vs.depthTexture != nil {
-		vs.depthTexture.Release()
-	}
-
-	// release previous msaa texture
-	if vs.msaaTexture != nil {
-		vs.msaaTexture.Release()
-	}
+	// release depth depth texture
+	vs.ReleaseTexture()
 
 	// create depth texture
 	if vs.depth {

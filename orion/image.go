@@ -41,22 +41,18 @@ func (c *ColorScale) ToColor() glm.Vec4f {
 }
 
 type Image struct {
-	texture      *pulse.Texture
-	renderTarget *RenderTarget
+	texture *pulse.Texture
 }
 
 func asImage(texture *pulse.Texture) *Image {
-	return &Image{
-		texture:      texture,
-		renderTarget: texture.AsRenderTarget(),
-	}
+	return &Image{texture: texture}
 }
 
 func (i *Image) Clear(color Color) {
 	clr := clearCommand.Get()
 	SwitchToCommand(clr)
 
-	err := clr.Clear(i.renderTarget, color)
+	err := clr.Clear(i.texture, color)
 	Handle(err, "clear image")
 }
 
@@ -93,7 +89,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.Draw(i.renderTarget, source.texture, pulse.DrawSpriteOptions{
+	err := sprites.Draw(i.texture, source.texture, pulse.DrawSpriteOptions{
 		Transform:    opts.Transform,
 		Color:        opts.ColorScale.ToColor(),
 		FilterMode:   filterMode,
@@ -123,7 +119,7 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.DrawFromGPU(i.renderTarget, source.texture, pulse.DrawSpriteFromGPUOptions{
+	err := sprites.DrawFromGPU(i.texture, source.texture, pulse.DrawSpriteFromGPUOptions{
 		Buffer:        buf,
 		InstanceCount: particleCount,
 		FilterMode:    filterMode,
@@ -136,7 +132,7 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 }
 
 func (i *Image) Size() glm.Vec2f {
-	return i.texture.Size()
+	return i.texture.Sizef()
 }
 
 func (i *Image) Width() uint32 {
@@ -159,9 +155,9 @@ func (i *Image) SubImage(x, y, width, height uint32) *Image {
 	pos := glm.Vec2[uint32]{x, y}
 	size := glm.Vec2[uint32]{width, height}
 
+	subTexture := i.texture.SubTexture(pos, size)
 	return &Image{
-		texture:      i.texture.SubTexture(pos, size),
-		renderTarget: i.renderTarget,
+		texture: subTexture,
 	}
 }
 

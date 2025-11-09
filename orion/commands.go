@@ -10,11 +10,12 @@ var mesh2dCommand global[*pulse.Mesh2dCommand]
 var textCommand global[*pulse.TextCommand]
 
 func initializeCommands(ctx *pulse.Context) {
-	clearCommand.set(pulse.NewClear(ctx))
 
 	sprite, err := pulse.NewSpriteCommand(ctx)
 	Handle(err, "initialize sprite command")
 	spriteCommand.set(sprite)
+
+	clearCommand.set(pulse.NewClear(ctx, sprite))
 
 	mesh2d, err := pulse.NewMesh2dCommand(ctx)
 	Handle(err, "initialize mesh2d command")

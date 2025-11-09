@@ -16,27 +16,40 @@ var spriteShaderCode string
 // maximum number of sprite vertices to render in one batchConfig.
 const maxSpriteInstances = 128 * 1024
 
+type spriteVertexUniforms struct {
+	targetTextureSize glm.Vec2f
+	sourceTextureSize glm.Vec2f
+}
+
 type spriteBatchConfig struct {
-	target       *RenderTarget
-	texture      *wgpu.TextureView
-	filterMode   wgpu.FilterMode
-	blendState   wgpu.BlendState
-	addressModeU wgpu.AddressMode
-	addressModeV wgpu.AddressMode
-	sourceWidth  uint32
-	sourceHeight uint32
-	shader       string
+	target              *Texture
+	texture             *wgpu.TextureView
+	filterMode          wgpu.FilterMode
+	blendState          wgpu.BlendState
+	addressModeU        wgpu.AddressMode
+	addressModeV        wgpu.AddressMode
+	sourceTextureWidth  uint32
+	sourceTextureHeight uint32
+	shader              string
 }
 
 type spriteInstance struct {
+	// Color to tint the sprite with
 	Color Color
-
-	UVOffset glm.Vec2f
-	UVScale  glm.Vec2f
 
 	// first and second row of the transposed affine
 	ModelTransposedCol0 glm.Vec3f
 	ModelTransposedCol1 glm.Vec3f
+
+	// Source region within the source texture (x, y, w, h).
+	// The source rectangle maps to uv 0 to 1.
+	SourceRegion glm.Vec4uh
+
+	// Target region to draw to in target texture (x, y, w, h)
+	// The sprites vertex coordinates are interpreted relative to x, y
+	// and are clipped to the target region. The sprite is a square from 0 to 1 and
+	// transformed with the model matrix first.
+	TargetRegion glm.Vec4uh
 }
 
 type SpriteCommand struct {
@@ -48,8 +61,7 @@ type SpriteCommand struct {
 	bufInstances *wgpu.Buffer
 	bufIndices   *wgpu.Buffer
 
-	bufViewTransform  *wgpu.Buffer
-	bufLocalTransform *wgpu.Buffer
+	bufVertexUniforms *wgpu.Buffer
 
 	batchConfig spriteBatchConfig
 }
@@ -76,32 +88,21 @@ func NewSpriteCommand(ctx *Context) (*SpriteCommand, error) {
 		return nil, fmt.Errorf("create index buffer: %w", err)
 	}
 
-	bufViewTransform, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
-		Label: "Sprite.ViewUniform",
+	bufVertexUniforms, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+		Label: "Sprite.VertexUniforms",
 		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
-		Size:  uint64(unsafe.Sizeof([4 * 4]float32{})),
+		Size:  uint64(unsafe.Sizeof(spriteVertexUniforms{})),
 	})
 
 	if err != nil {
 		return nil, fmt.Errorf("create view transform uniform: %w", err)
 	}
 
-	bufLocalTransform, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
-		Label: "Sprite.LocalUniform",
-		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
-		Size:  uint64(unsafe.Sizeof([4 * 4]float32{})),
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("create local transform uniform: %w", err)
-	}
-
 	p := &SpriteCommand{
 		ctx:               ctx,
 		bufInstances:      bufInstances,
 		bufIndices:        bufIndices,
-		bufViewTransform:  bufViewTransform,
-		bufLocalTransform: bufLocalTransform,
+		bufVertexUniforms: bufVertexUniforms,
 	}
 
 	p.pipelineCache = NewPipelineCache[spritePipelineConfig](ctx)
@@ -121,21 +122,21 @@ type DrawSpriteOptions struct {
 	Shader string
 }
 
-func (p *SpriteCommand) Draw(dest *RenderTarget, source *Texture, opts DrawSpriteOptions) error {
+func (p *SpriteCommand) Draw(dest *Texture, source *Texture, opts DrawSpriteOptions) error {
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
 	}
 
 	batchConfig := spriteBatchConfig{
-		target:       dest,
-		texture:      source.SourceView(),
-		sourceWidth:  source.Width(),
-		sourceHeight: source.Height(),
-		filterMode:   opts.FilterMode,
-		blendState:   opts.BlendState,
-		addressModeU: opts.AddressModeU,
-		addressModeV: opts.AddressModeV,
-		shader:       opts.Shader,
+		target:              dest.Root(),
+		texture:             source.Root().SourceView(),
+		sourceTextureWidth:  source.Root().Width(),
+		sourceTextureHeight: source.Root().Height(),
+		filterMode:          opts.FilterMode,
+		blendState:          opts.BlendState,
+		addressModeU:        opts.AddressModeU,
+		addressModeV:        opts.AddressModeV,
+		shader:              opts.Shader,
 	}
 
 	requireFlush := p.batchConfig != batchConfig ||
@@ -149,12 +150,27 @@ func (p *SpriteCommand) Draw(dest *RenderTarget, source *Texture, opts DrawSprit
 		p.batchConfig = batchConfig
 	}
 
+	sw, sh := source.region.Size().XY()
+	dw, dh := dest.region.Size().XY()
+
 	p.instances = append(p.instances, spriteInstance{
 		Color:               opts.Color,
-		UVOffset:            source.UVOffset(),
-		UVScale:             source.UVScale(),
 		ModelTransposedCol0: opts.Transform.Row(0),
 		ModelTransposedCol1: opts.Transform.Row(1),
+
+		SourceRegion: glm.Vec4uh{
+			uint16(source.region.Min[0]),
+			uint16(source.region.Min[1]),
+			uint16(sw),
+			uint16(sh),
+		},
+
+		TargetRegion: glm.Vec4uh{
+			uint16(dest.region.Min[0]),
+			uint16(dest.region.Min[1]),
+			uint16(dw),
+			uint16(dh),
+		},
 	})
 
 	return nil
@@ -171,7 +187,7 @@ type DrawSpriteFromGPUOptions struct {
 	Shader       string
 }
 
-func (p *SpriteCommand) DrawFromGPU(dest *RenderTarget, source *Texture, opts DrawSpriteFromGPUOptions) error {
+func (p *SpriteCommand) DrawFromGPU(dest *Texture, source *Texture, opts DrawSpriteFromGPUOptions) error {
 	if err := p.Flush(); err != nil {
 		return fmt.Errorf("flush: %w", err)
 	}
@@ -181,18 +197,18 @@ func (p *SpriteCommand) DrawFromGPU(dest *RenderTarget, source *Texture, opts Dr
 	}
 
 	p.batchConfig = spriteBatchConfig{
-		target:       dest,
-		texture:      source.SourceView(),
-		sourceWidth:  source.Width(),
-		sourceHeight: source.Height(),
-		filterMode:   opts.FilterMode,
-		blendState:   opts.BlendState,
-		addressModeU: opts.AddressModeU,
-		addressModeV: opts.AddressModeV,
-		shader:       opts.Shader,
+		target:              dest.Root(),
+		texture:             source.Root().SourceView(),
+		sourceTextureWidth:  source.Root().Width(),
+		sourceTextureHeight: source.Root().Height(),
+		filterMode:          opts.FilterMode,
+		blendState:          opts.BlendState,
+		addressModeU:        opts.AddressModeU,
+		addressModeV:        opts.AddressModeV,
+		shader:              opts.Shader,
 	}
 
-	return p.flushWith(opts.Buffer, uint32(opts.InstanceCount))
+	return p.flushWith(opts.Buffer, uint32(opts.InstanceCount), nil)
 
 }
 
@@ -211,10 +227,31 @@ func (p *SpriteCommand) Flush() error {
 		return fmt.Errorf("update instance buffer: %w", err)
 	}
 
-	return p.flushWith(p.bufInstances, uint32(len(p.instances)))
+	x0 := p.instances[0].TargetRegion[0]
+	y0 := p.instances[0].TargetRegion[1]
+	x1 := x0 + p.instances[0].TargetRegion[2]
+	y1 := y0 + p.instances[0].TargetRegion[3]
+
+	for idx := range p.instances {
+		x0 = min(x0, p.instances[idx].TargetRegion[0])
+		y0 = min(y0, p.instances[idx].TargetRegion[1])
+		x1 = max(x1, p.instances[idx].TargetRegion[0]+p.instances[idx].TargetRegion[2])
+		y1 = max(y1, p.instances[idx].TargetRegion[1]+p.instances[idx].TargetRegion[3])
+	}
+
+	rect := Rectangle2u{
+		Min: glm.Vec2[uint32]{
+			uint32(x0), uint32(y0),
+		},
+		Max: glm.Vec2[uint32]{
+			uint32(x1), uint32(y1),
+		},
+	}
+
+	return p.flushWith(p.bufInstances, uint32(len(p.instances)), &rect)
 }
 
-func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) error {
+func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *Rectangle2u) error {
 	defer p.reset()
 
 	batchConfig := p.batchConfig
@@ -241,8 +278,8 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 	}
 
 	pipelineConfig := spritePipelineConfig{
-		TargetFormat:      batchConfig.target.Format,
-		TargetSampleCount: batchConfig.target.SampleCount,
+		TargetFormat:      batchConfig.target.Format(),
+		TargetSampleCount: batchConfig.target.sampleCount,
 		BlendState:        batchConfig.blendState,
 		ShaderSource:      batchConfig.shader,
 	}
@@ -265,12 +302,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 			},
 			{
 				Binding: 2,
-				Buffer:  p.bufViewTransform,
-				Size:    wgpu.WholeSize,
-			},
-			{
-				Binding: 3,
-				Buffer:  p.bufLocalTransform,
+				Buffer:  p.bufVertexUniforms,
 				Size:    wgpu.WholeSize,
 			},
 		},
@@ -282,38 +314,40 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 
 	defer bindGroup.Release()
 
-	// build a new view transform
-	vw, vh := batchConfig.target.Width, batchConfig.target.Height
-	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
+	// prepare uniforms to upload
+	uni := spriteVertexUniforms{
+		targetTextureSize: glm.Vec2f{
+			float32(batchConfig.target.Width()),
+			float32(batchConfig.target.Height()),
+		},
 
-	viewTransformValues := viewTransform.ToWGPU()
-	err = queue.WriteBuffer(p.bufViewTransform, 0, AsByteSlice(&viewTransformValues))
+		sourceTextureSize: glm.Vec2f{
+			float32(batchConfig.sourceTextureWidth),
+			float32(batchConfig.sourceTextureHeight),
+		},
+	}
+
+	// upload to uniform buffer
+	err = queue.WriteBuffer(p.bufVertexUniforms, 0, AsByteSlice(&uni))
 	if err != nil {
 		return fmt.Errorf("update view transform buffer: %w", err)
 	}
 
-	// scale by size of the source image
-	sw, sh := float32(batchConfig.sourceWidth), float32(batchConfig.sourceHeight)
-	localTransform := glm.ScaleMat3(sw, sh)
-
-	localTransformValues := localTransform.ToWGPU()
-	err = queue.WriteBuffer(p.bufLocalTransform, 0, AsByteSlice(&localTransformValues))
-	if err != nil {
-		return fmt.Errorf("update local transform buffer: %w", err)
-	}
-
+	// create command encoder to prepare render pass
 	encoder, err := p.ctx.CreateCommandEncoder(nil)
 	if err != nil {
 		return err
 	}
 	defer encoder.Release()
 
+	view, resolveTarget := batchConfig.target.Views()
+
 	pass := encoder.BeginRenderPass(&wgpu.RenderPassDescriptor{
 		Label: "RenderPassSprite",
 		ColorAttachments: []wgpu.RenderPassColorAttachment{
 			{
-				View:          batchConfig.target.View,
-				ResolveTarget: batchConfig.target.ResolveTarget,
+				View:          view,
+				ResolveTarget: resolveTarget,
 				LoadOp:        wgpu.LoadOpLoad,
 				StoreOp:       wgpu.StoreOpStore,
 			},
@@ -326,11 +360,16 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 		}
 	}()
 
+	if scissorRect != nil {
+		pass.SetScissorRect(scissorRect.XYWH())
+	}
+
 	pass.SetPipeline(pc.Pipeline)
 	pass.SetBindGroup(0, bindGroup, nil)
 	pass.SetVertexBuffer(0, instances, 0, wgpu.WholeSize)
 	pass.SetIndexBuffer(p.bufIndices, wgpu.IndexFormatUint16, 0, wgpu.WholeSize)
 	pass.DrawIndexed(6, instanceCount, 0, 0, 0)
+
 	if err := pass.End(); err != nil {
 		return err
 	}
@@ -382,8 +421,8 @@ func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 			EntryPoint: "vs_main",
 			Buffers: []wgpu.VertexBufferLayout{
 				{
-					ArrayStride: uint64(unsafe.Sizeof(spriteInstance{})),
 					StepMode:    wgpu.VertexStepModeInstance,
+					ArrayStride: uint64(unsafe.Sizeof(spriteInstance{})),
 					Attributes: []wgpu.VertexAttribute{
 						{
 							// color
@@ -392,27 +431,27 @@ func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 							ShaderLocation: 0,
 						},
 						{
-							// uv pos
-							Format:         wgpu.VertexFormatFloat32x2,
-							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.UVOffset)),
-							ShaderLocation: 1,
-						},
-						{
-							// uv scale
-							Format:         wgpu.VertexFormatFloat32x2,
-							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.UVScale)),
-							ShaderLocation: 2,
-						},
-						{
 							// transform, row0
 							Format:         wgpu.VertexFormatFloat32x3,
 							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.ModelTransposedCol0)),
-							ShaderLocation: 3,
+							ShaderLocation: 1,
 						},
 						{
 							// transform, row1
 							Format:         wgpu.VertexFormatFloat32x3,
 							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.ModelTransposedCol1)),
+							ShaderLocation: 2,
+						},
+						{
+							// uv pos
+							Format:         wgpu.VertexFormatUint32x2,
+							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.SourceRegion)),
+							ShaderLocation: 3,
+						},
+						{
+							// uv scale
+							Format:         wgpu.VertexFormatUint32x2,
+							Offset:         uint64(unsafe.Offsetof(spriteInstance{}.TargetRegion)),
 							ShaderLocation: 4,
 						},
 					},

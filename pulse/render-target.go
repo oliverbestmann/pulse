@@ -14,12 +14,12 @@ type RenderTarget struct {
 	// Texture format of View
 	Format wgpu.TextureFormat
 
-	// TODO we would need the offset here too i guess
-
-	// Size of the target to render to
-	Width  uint32
-	Height uint32
+	// Region of the View to render to
+	Region Rectangle2[uint32]
 
 	// The number of samples of the View texture
 	SampleCount uint32
+
+	TotalWidth  uint32
+	TotalHeight uint32
 }

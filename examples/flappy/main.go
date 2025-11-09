@@ -87,7 +87,7 @@ func (g *Game) Update() error {
 
 	if orion.IsKeyJustPressed(glimpse.KeyD) {
 		orion.DebugOverlay.RunGC = true
-		orion.DebugOverlay.Enabled = !orion.DebugOverlay.Enabled
+		orion.DebugOverlay.Toggle()
 	}
 
 	if orion.IsKeyJustPressed(glimpse.KeyEscape) {
@@ -125,6 +125,10 @@ func (g *Game) Draw(screen *orion.Image) {
 	orion.DebugOverlay.Draw(screen)
 }
 
+func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
+	orion.DefaultDrawToSurface(surface, offscreen, wgpu.FilterModeNearest)
+}
+
 func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[float32], y, parallaxScale float32) {
 	parallaxOffset := g.xOffset * (1 - parallaxScale)
 
@@ -138,10 +142,6 @@ func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[fl
 			Transform: cam.Mul(glm.TranslationMat3(xTile, y)),
 		})
 	}
-}
-
-func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
-	orion.DefaultDrawToSurface(surface, offscreen, wgpu.FilterModeNearest)
 }
 
 func main() {

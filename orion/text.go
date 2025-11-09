@@ -24,7 +24,7 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 	textCommand := textCommand.Get()
 	SwitchToCommand(textCommand)
 
-	err := textCommand.DrawText(dest.renderTarget, pulse.DrawTextOptions{
+	err := textCommand.DrawText(dest.texture, pulse.DrawTextOptions{
 		Text:      text,
 		Transform: opts.Transform,
 		Color:     opts.ColorScale.ToColor(),

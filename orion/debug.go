@@ -21,8 +21,8 @@ type frame struct {
 var DebugOverlay debugOverlay
 
 type debugOverlay struct {
-	Enabled bool
 	RunGC   bool
+	enabled bool
 
 	frameCount int
 	frames     [60 * 10]frame
@@ -42,8 +42,17 @@ type debugOverlay struct {
 	objectsAliveAfterGC uint64
 }
 
+func (d *debugOverlay) Enable(enable bool) {
+	d.enabled = enable
+	d.timeStartFrame = time.Time{}
+}
+
+func (d *debugOverlay) Toggle() {
+	d.Enable(!d.enabled)
+}
+
 func (d *debugOverlay) StartFrame() {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 
@@ -64,7 +73,7 @@ func (d *debugOverlay) StartFrame() {
 }
 
 func (d *debugOverlay) StartGetCurrentTexture() {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 
@@ -72,7 +81,7 @@ func (d *debugOverlay) StartGetCurrentTexture() {
 }
 
 func (d *debugOverlay) StartGameUpdate() {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 
@@ -80,7 +89,7 @@ func (d *debugOverlay) StartGameUpdate() {
 }
 
 func (d *debugOverlay) StartGameDraw() {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 
@@ -88,7 +97,7 @@ func (d *debugOverlay) StartGameDraw() {
 }
 
 func (d *debugOverlay) EndFrame() {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 
@@ -109,7 +118,7 @@ func (d *debugOverlay) EndFrame() {
 }
 
 func (d *debugOverlay) Draw(target *Image) {
-	if !d.Enabled {
+	if !d.enabled {
 		return
 	}
 

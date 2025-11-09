@@ -2,17 +2,30 @@ package pulse
 
 import (
 	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/go3d/glm"
 )
 
 type ClearCommand struct {
-	device *wgpu.Device
+	device        *wgpu.Device
+	spriteCommand *SpriteCommand
+
+	whiteTexture      *Texture
+	whiteTextureClear bool
 }
 
-func NewClear(ctx *Context) *ClearCommand {
-	return &ClearCommand{device: ctx.Device}
+func NewClear(ctx *Context, spriteCommand *SpriteCommand) *ClearCommand {
+	// TODO find a better solution, maybe a simpler render pipeline?
+	whiteTexture, _ := NewTexture(ctx, NewTextureOptions{
+		Label:  "White",
+		Format: wgpu.TextureFormatRGBA8Unorm,
+		Width:  1,
+		Height: 1,
+	})
+
+	return &ClearCommand{device: ctx.Device, spriteCommand: spriteCommand, whiteTexture: whiteTexture}
 }
 
-func (c *ClearCommand) Clear(target *RenderTarget, color Color) error {
+func (c *ClearCommand) Clear(target *Texture, color Color) error {
 	enc, err := c.device.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{
 		Label: "ClearTexture",
 	})
@@ -23,72 +36,79 @@ func (c *ClearCommand) Clear(target *RenderTarget, color Color) error {
 
 	defer enc.Release()
 
-	pass := enc.BeginRenderPass(&wgpu.RenderPassDescriptor{
-		Label: "ClearTexture",
-		ColorAttachments: []wgpu.RenderPassColorAttachment{
-			{
-				View:          target.View,
-				ResolveTarget: target.ResolveTarget,
-				LoadOp:        wgpu.LoadOpClear,
-				StoreOp:       wgpu.StoreOpStore,
-				ClearValue: wgpu.Color{
-					R: float64(color[0]),
-					G: float64(color[1]),
-					B: float64(color[2]),
-					A: float64(color[3]),
+	view, resolveView := target.Views()
+
+	if target == target.Root() {
+		desc := &wgpu.RenderPassDescriptor{
+			Label: "ClearTexture",
+			ColorAttachments: []wgpu.RenderPassColorAttachment{
+				{
+					View:          view,
+					ResolveTarget: resolveView,
+					LoadOp:        wgpu.LoadOpClear,
+					StoreOp:       wgpu.StoreOpStore,
+					ClearValue: wgpu.Color{
+						R: float64(color[0]),
+						G: float64(color[1]),
+						B: float64(color[2]),
+						A: float64(color[3]),
+					},
 				},
 			},
-		},
-	})
+		}
 
-	passGuard := NewReleaseGuard(pass)
-	defer passGuard.Release()
+		pass := enc.BeginRenderPass(desc)
 
-	if err := pass.End(); err != nil {
-		return err
+		defer func() {
+			if pass != nil {
+				pass.Release()
+			}
+		}()
+
+		if err := pass.End(); err != nil {
+			return err
+		}
+
+		pass.Release()
+		pass = nil
+
+		// encode into a command buffer
+		buf, err := enc.Finish(&wgpu.CommandBufferDescriptor{Label: "ClearTexture"})
+		if err != nil {
+			return err
+		}
+
+		defer buf.Release()
+
+		queue := c.device.GetQueue()
+		defer queue.Release()
+
+		queue.Submit(buf)
+
+		return nil
+	} else {
+		if !c.whiteTextureClear {
+			c.whiteTextureClear = true
+
+			if err := c.Clear(c.whiteTexture, ColorWhite); err != nil {
+				return err
+			}
+		}
+
+		tw, th := target.Sizef().XY()
+
+		// draw a color square
+		return c.spriteCommand.Draw(target, c.whiteTexture, DrawSpriteOptions{
+			Transform:    glm.ScaleMat3(tw, th),
+			Color:        color,
+			FilterMode:   wgpu.FilterModeNearest,
+			BlendState:   wgpu.BlendStateReplace,
+			AddressModeU: wgpu.AddressModeClampToEdge,
+			AddressModeV: wgpu.AddressModeClampToEdge,
+		})
 	}
-
-	passGuard.Release()
-
-	// encode into a command buffer
-	buf, err := enc.Finish(&wgpu.CommandBufferDescriptor{Label: "ClearTexture"})
-	if err != nil {
-		return err
-	}
-
-	defer buf.Release()
-
-	queue := c.device.GetQueue()
-	defer queue.Release()
-
-	queue.Submit(buf)
-
-	return nil
 }
 
 func (c *ClearCommand) Flush() error {
-	return nil
-}
-
-type Releaser interface {
-	Release()
-}
-
-type ReleaseGuard struct {
-	delegate Releaser
-}
-
-func NewReleaseGuard(delegate Releaser) ReleaseGuard {
-	return ReleaseGuard{delegate: delegate}
-}
-
-func (r *ReleaseGuard) Keep() {
-	r.delegate = nil
-}
-
-func (r *ReleaseGuard) Release() {
-	if r.delegate != nil {
-		r.delegate.Release()
-		r.delegate = nil
-	}
+	return c.spriteCommand.Flush()
 }

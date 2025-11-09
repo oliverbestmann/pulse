@@ -85,7 +85,7 @@ func (p *Mesh2dCommand) DrawTriangles(dest *RenderTarget, opts DrawMesh2dOptions
 	}
 
 	// build a new view transform
-	vw, vh := batchConfig.target.Width, batchConfig.target.Height
+	vw, vh := batchConfig.target.Region.Width(), batchConfig.target.Region.Height()
 	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
 
 	// model view matrix

@@ -34,7 +34,7 @@ type DrawTextOptions struct {
 	TabWidth  uint
 }
 
-func (t *TextCommand) DrawText(dest *RenderTarget, opts DrawTextOptions) error {
+func (t *TextCommand) DrawText(dest *Texture, opts DrawTextOptions) error {
 	spriteOpts := DrawSpriteOptions{
 		Color:        opts.Color,
 		FilterMode:   wgpu.FilterModeNearest,

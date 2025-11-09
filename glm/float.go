@@ -1,9 +1,11 @@
 package glm
 
+import "golang.org/x/exp/constraints"
+
 type float interface {
 	~float32 | ~float64
 }
 
 type numeric interface {
-	float | uint32
+	constraints.Integer | constraints.Float
 }
