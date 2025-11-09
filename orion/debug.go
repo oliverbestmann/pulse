@@ -141,14 +141,23 @@ func (d *debugOverlay) fps() float64 {
 }
 
 func (d *debugOverlay) buildText() string {
+
+	lastCycle := (d.mem.NumGC + 255) % 256
+	lastCycleDur := time.Duration(d.mem.PauseNs[lastCycle])
+
 	lines := []string{
 		fmt.Sprintf("FPS: %1.2f", d.fps()),
 		fmt.Sprintf("Frames: %d", d.frameCount),
-		fmt.Sprintf("---"),
+		fmt.Sprintf(""),
 		fmt.Sprintf("Memory"),
-		fmt.Sprintf("  Heap .Objects: %d", d.mem.HeapObjects),
-		fmt.Sprintf("  Heap .InUse:   %1.2fmb", float64(d.mem.HeapInuse)/(1024.0*1024.0)),
-		fmt.Sprintf("  Stack.InUse:   %1.2fmb", float64(d.mem.StackInuse)/(1024.0*1024.0)),
+		fmt.Sprintf("  Heap Objects: %d", d.mem.HeapObjects),
+		fmt.Sprintf("  Heap InUse:   %1.2fmb", float64(d.mem.HeapInuse)/(1024.0*1024.0)),
+		fmt.Sprintf("  Stack InUse:  %1.2fmb", float64(d.mem.StackInuse)/(1024.0*1024.0)),
+		fmt.Sprintf(""),
+		fmt.Sprintf("GC:"),
+		fmt.Sprintf("  Cycles:   %d", d.mem.NumGC),
+		fmt.Sprintf("  Fraction: %1.2f%%", d.mem.GCCPUFraction*100),
+		fmt.Sprintf("  Duration: %1.2fms", lastCycleDur.Seconds()*1000),
 	}
 
 	return strings.Join(lines, "\n")

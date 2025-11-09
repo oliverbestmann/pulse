@@ -99,8 +99,6 @@ func (g *Game) Draw(screen *orion.Image) {
 
 	// draw foreground tiles
 	g.drawTiles(screen, g.foreground, cam, float32(256-g.foreground.Height()), 1.0)
-
-	orion.DebugOverlay.Draw(screen)
 }
 
 func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[float32], y, parallaxScale float32) {
@@ -120,6 +118,9 @@ func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[fl
 
 func (g *Game) FinalizeDrawScreen(surface, offscreen *orion.Image) {
 	orion.DefaultDrawScreen(surface, offscreen, wgpu.FilterModeNearest)
+
+	// draw overlay
+	orion.DebugOverlay.Draw(surface)
 }
 
 func main() {

@@ -31,7 +31,7 @@ func NewWindow(width, height int, title string) (Window, error) {
 
 	w := &glfwWindow{
 		win:  window,
-		prof: profile.Start(profile.MemProfile),
+		prof: profile.Start(profile.CPUProfile),
 	}
 
 	window.SetKeyCallback(func(_win *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
