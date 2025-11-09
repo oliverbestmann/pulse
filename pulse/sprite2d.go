@@ -247,16 +247,13 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 		ShaderSource:      batchConfig.shader,
 	}
 
-	pipeline, err := p.pipelineCache.Get(pipelineConfig)
+	pc, err := p.pipelineCache.Get(pipelineConfig)
 	if err != nil {
 		return fmt.Errorf("get new pipeline: %w", err)
 	}
 
-	bindGroupLayout := pipeline.GetBindGroupLayout(0)
-	defer bindGroupLayout.Release()
-
 	bindGroup, err := p.ctx.CreateBindGroup(&wgpu.BindGroupDescriptor{
-		Layout: bindGroupLayout,
+		Layout: pc.GetBindGroupLayout(0),
 		Entries: []wgpu.BindGroupEntry{
 			{
 				Binding:     0,
@@ -329,7 +326,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 		}
 	}()
 
-	pass.SetPipeline(pipeline)
+	pass.SetPipeline(pc.Pipeline)
 	pass.SetBindGroup(0, bindGroup, nil)
 	pass.SetVertexBuffer(0, instances, 0, wgpu.WholeSize)
 	pass.SetIndexBuffer(p.bufIndices, wgpu.IndexFormatUint16, 0, wgpu.WholeSize)

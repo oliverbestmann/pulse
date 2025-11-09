@@ -20,7 +20,7 @@ type RunGameOptions struct {
 func RunGame(opts RunGameOptions) error {
 	game := opts.Game
 	if game == nil {
-		return errors.New("Game must not be nil")
+		return errors.New("game must not be nil")
 	}
 
 	if opts.WindowWidth == 0 {
@@ -57,7 +57,7 @@ func RunGame(opts RunGameOptions) error {
 	defer ctx.Release()
 
 	// initialize the view
-	view, err := pulse.NewView(ctx, false)
+	view, err := pulse.NewView(ctx, false, false)
 	if err != nil {
 		return fmt.Errorf("create view: %w", err)
 	}
@@ -75,8 +75,14 @@ func RunGame(opts RunGameOptions) error {
 		Game:   game,
 	}
 
-	return win.Run(func(inputState glimpse.UpdateInputState) error {
+	err = win.Run(func(inputState glimpse.UpdateInputState) error {
 		// do the actual rendering here
 		return loopOnce(view, loopState, inputState)
 	})
+
+	if errors.Is(err, ExitApp) {
+		return nil
+	}
+
+	return err
 }

@@ -11,17 +11,20 @@ type View struct {
 
 	surfaceConfig *wgpu.SurfaceConfiguration
 
-	sampleCount uint32
-
 	// only configured if we have a multisample texture configured
 	msaaTexture *Texture
 
 	// depth texture to render to.
 	// has the same sampleCount as the surface itself
 	depthTexture *Texture
+
+	sampleCount uint32
+
+	// true if depth is enabled
+	depth bool
 }
 
-func NewView(dev *Context, msaa bool) (st *View, err error) {
+func NewView(dev *Context, msaa bool, depth bool) (st *View, err error) {
 	defer func() {
 		if err != nil && st != nil {
 			st.Release()
@@ -29,7 +32,7 @@ func NewView(dev *Context, msaa bool) (st *View, err error) {
 		}
 	}()
 
-	st = &View{Context: dev}
+	st = &View{Context: dev, depth: depth}
 
 	if msaa {
 		st.sampleCount = 4
@@ -58,6 +61,10 @@ func (vs *View) MSAA() bool {
 	return vs.sampleCount > 1
 }
 
+func (vs *View) Depth() bool {
+	return vs.depth
+}
+
 func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
 	if vs.MSAA() {
 		screenTexture := ImportTexture(screen, screenView, nil)
@@ -80,8 +87,9 @@ func (vs *View) Release() {
 	if vs.depthTexture != nil {
 		vs.depthTexture.Release()
 	}
-	vs.depthTexture = nil
-	vs.msaaTexture = nil
+	if vs.msaaTexture != nil {
+		vs.msaaTexture.Release()
+	}
 }
 
 func (vs *View) Configure(width, height uint32) error {
@@ -91,14 +99,22 @@ func (vs *View) Configure(width, height uint32) error {
 
 	var err error
 
-	// release previous textures
-	vs.depthTexture = nil
-	vs.msaaTexture = nil
+	// release depth texture
+	if vs.depthTexture != nil {
+		vs.depthTexture.Release()
+	}
+
+	// release previous msaa texture
+	if vs.msaaTexture != nil {
+		vs.msaaTexture.Release()
+	}
 
 	// create depth texture
-	vs.depthTexture, err = createDepthTexture(vs.Context, width, height, vs.sampleCount)
-	if err != nil {
-		return err
+	if vs.depth {
+		vs.depthTexture, err = createDepthTexture(vs.Context, width, height, vs.sampleCount)
+		if err != nil {
+			return err
+		}
 	}
 
 	if vs.MSAA() {

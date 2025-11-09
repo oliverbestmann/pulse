@@ -132,7 +132,7 @@ func (p *Mesh2dCommand) Flush() error {
 		ShaderSource:      batchConfig.shader,
 	}
 
-	pipeline, err := p.pipelineCache.Get(pipelineConfig)
+	pc, err := p.pipelineCache.Get(pipelineConfig)
 	if err != nil {
 		return fmt.Errorf("get new pipeline: %w", err)
 	}
@@ -169,7 +169,7 @@ func (p *Mesh2dCommand) Flush() error {
 		}
 	}()
 
-	pass.SetPipeline(pipeline)
+	pass.SetPipeline(pc.Pipeline)
 	pass.SetVertexBuffer(0, p.buvVertices, 0, wgpu.WholeSize)
 	pass.Draw(uint32(len(p.vertices)), 1, 0, 0)
 
