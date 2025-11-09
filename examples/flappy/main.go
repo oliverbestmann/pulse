@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"os"
+	"time"
 
 	_ "image/png"
 
@@ -21,7 +22,7 @@ var _flappy_png []byte
 type Game struct {
 	orion.DefaultGame
 
-	times orion.FrameTimes
+	lastTime time.Time
 
 	background *orion.Image
 	foreground *orion.Image
@@ -67,7 +68,13 @@ func (g *Game) Initialize() error {
 }
 
 func (g *Game) Update() error {
-	dt := g.times.Tick().Seconds
+	now := time.Now()
+	if g.lastTime.IsZero() {
+		g.lastTime = now
+	}
+
+	dt := float32(now.Sub(g.lastTime).Seconds())
+	g.lastTime = now
 
 	g.xOffset += dt * 100
 
