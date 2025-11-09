@@ -4,6 +4,7 @@ package glimpse
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/cogentcore/webgpu/wgpuglfw"
@@ -34,36 +35,7 @@ func NewWindow(width, height int, title string) (Window, error) {
 		prof: profile.Start(profile.CPUProfile),
 	}
 
-	window.SetKeyCallback(func(_win *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		keyCode := KeyCode(key)
-
-		if action == glfw.Repeat {
-			return
-		}
-
-		switch action {
-		case glfw.Press:
-			w.input.Keys.press(keyCode)
-
-		case glfw.Release:
-			w.input.Keys.release(keyCode)
-		}
-	})
-
-	window.SetMouseButtonCallback(func(_win *glfw.Window, btn glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-		button := MouseButton(btn)
-
-		switch action {
-		case glfw.Press:
-			w.input.Mouse.press(button)
-		case glfw.Release:
-			w.input.Mouse.release(button)
-		}
-	})
-
-	window.SetCursorPosCallback(func(_win *glfw.Window, xpos float64, ypos float64) {
-		w.input.Mouse.position(float32(xpos), float32(ypos))
-	})
+	configureInput(window, &w.input)
 
 	return w, nil
 }
@@ -101,4 +73,52 @@ func (g *glfwWindow) Run(render func(input UpdateInputState) error) error {
 	}
 
 	return nil
+}
+
+func configureInput(window *glfw.Window, input *InputState) {
+	window.SetKeyCallback(func(_win *glfw.Window, glfwKey glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+		if action == glfw.Repeat {
+			return
+		}
+
+		key, ok := keyOf(glfwKey)
+		if !ok {
+			return
+		}
+
+		switch action {
+		case glfw.Press:
+			input.Keys.press(key)
+
+		case glfw.Release:
+			input.Keys.release(key)
+		}
+	})
+
+	window.SetMouseButtonCallback(func(_win *glfw.Window, btn glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+		button := MouseButton(btn)
+
+		switch action {
+		case glfw.Press:
+			input.Mouse.press(button)
+		case glfw.Release:
+			input.Mouse.release(button)
+		}
+	})
+
+	window.SetCursorPosCallback(func(_win *glfw.Window, xpos float64, ypos float64) {
+		input.Mouse.position(float32(xpos), float32(ypos))
+	})
+}
+
+func keyOf(glfwKey glfw.Key) (key Key, ok bool) {
+	key, ok = glfwToKey[glfwKey]
+	if !ok {
+		slog.Warn(
+			"Unknown key code",
+			slog.String("key", glfw.GetKeyName(glfwKey, 0)),
+		)
+	}
+
+	return
 }

@@ -235,12 +235,10 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32) 
 		MaxAnisotropy: 1,
 	}
 
-	sampler, err := p.ctx.CreateSampler(&descSampler)
+	sampler, err := CachedSampler(p.ctx.Device, descSampler)
 	if err != nil {
 		return err
 	}
-
-	defer sampler.Release()
 
 	pipelineConfig := spritePipelineConfig{
 		TargetFormat:      batchConfig.target.Format,

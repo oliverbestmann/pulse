@@ -21,6 +21,9 @@ type frame struct {
 var DebugOverlay debugOverlay
 
 type debugOverlay struct {
+	Enabled bool
+	RunGC   bool
+
 	frameCount int
 	frames     [60 * 10]frame
 
@@ -33,9 +36,17 @@ type debugOverlay struct {
 	timeEndFrame               time.Time
 
 	mem runtime.MemStats
+
+	// previous number of cycles
+	memNumGC            uint32
+	objectsAliveAfterGC uint64
 }
 
 func (d *debugOverlay) StartFrame() {
+	if !d.Enabled {
+		return
+	}
+
 	now := time.Now()
 
 	if !d.timeStartFrame.IsZero() {
@@ -53,36 +64,69 @@ func (d *debugOverlay) StartFrame() {
 }
 
 func (d *debugOverlay) StartGetCurrentTexture() {
+	if !d.Enabled {
+		return
+	}
+
 	d.timeStartGetCurrentTexture = time.Now()
 }
 
 func (d *debugOverlay) StartGameUpdate() {
+	if !d.Enabled {
+		return
+	}
+
 	d.timeStartGameUpdate = time.Now()
 }
 
 func (d *debugOverlay) StartGameDraw() {
+	if !d.Enabled {
+		return
+	}
+
 	d.timeStartGameDraw = time.Now()
 }
 
 func (d *debugOverlay) EndFrame() {
+	if !d.Enabled {
+		return
+	}
+
 	d.timeEndFrame = time.Now()
 
+	if d.RunGC {
+		if d.frameCount%10 == 0 {
+			runtime.GC()
+		}
+	}
+
 	runtime.ReadMemStats(&d.mem)
+
+	if d.mem.NumGC > d.memNumGC {
+		d.memNumGC = d.mem.NumGC
+		d.objectsAliveAfterGC = d.mem.HeapObjects
+	}
 }
 
 func (d *debugOverlay) Draw(target *Image) {
-	text := d.buildText()
+	if !d.Enabled {
+		return
+	}
 
 	if d.white == nil {
 		d.white = NewImage(1, 1, nil)
 		d.white.Clear(pulse.ColorWhite)
 	}
 
-	DebugText(target, text, &DebugTextOptions{
+	DebugText(target, d.buildText(), &DebugTextOptions{
 		Transform:  glm.TranslationMat3[float32](16, 16),
 		ColorScale: ColorScale{},
 	})
 
+	d.drawFrameStats(target)
+}
+
+func (d *debugOverlay) drawFrameStats(target *Image) {
 	binWidth := float32(target.Width()) / float32(len(d.frames))
 	timeScale := float32(30) / (1.0 / 60.0)
 
@@ -158,6 +202,7 @@ func (d *debugOverlay) buildText() string {
 		fmt.Sprintf("  Cycles:   %d", d.mem.NumGC),
 		fmt.Sprintf("  Fraction: %1.2f%%", d.mem.GCCPUFraction*100),
 		fmt.Sprintf("  Duration: %1.2fms", lastCycleDur.Seconds()*1000),
+		fmt.Sprintf("  Alive:    %d", d.objectsAliveAfterGC),
 	}
 
 	return strings.Join(lines, "\n")

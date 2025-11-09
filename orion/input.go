@@ -5,7 +5,7 @@ import (
 	"github.com/oliverbestmann/go3d/glm"
 )
 
-type KeyCode = glimpse.KeyCode
+type KeyCode = glimpse.Key
 type MouseButton = glimpse.MouseButton
 
 func MousePositionRaw() glm.Vec2f {

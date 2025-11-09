@@ -4,31 +4,29 @@ import "log/slog"
 
 type UpdateInputState func() InputState
 
-type KeyCode uint32
-
 type MouseButton uint32
 
 type KeysState struct {
 	// the keys that are currently marked as "pressed"
-	Pressed map[KeyCode]bool
+	Pressed map[Key]bool
 
 	// keys that where just pressed after the last call to nextTick()
-	JustPressed map[KeyCode]bool
+	JustPressed map[Key]bool
 
 	// keys that were just released after the last call to nextTick()
-	JustReleased map[KeyCode]bool
+	JustReleased map[Key]bool
 }
 
-func (k *KeysState) press(keyCode KeyCode) {
-	slog.Info("Key just pressed", slog.Int("keyCode", int(keyCode)))
+func (k *KeysState) press(key Key) {
+	slog.Info("Key just pressed", slog.String("key", key.String()))
 
-	setTrue(&k.Pressed, keyCode)
-	setTrue(&k.JustPressed, keyCode)
+	setTrue(&k.Pressed, key)
+	setTrue(&k.JustPressed, key)
 }
 
-func (k *KeysState) release(keyCode KeyCode) {
-	setFalse(&k.Pressed, keyCode)
-	setTrue(&k.JustReleased, keyCode)
+func (k *KeysState) release(key Key) {
+	setFalse(&k.Pressed, key)
+	setTrue(&k.JustReleased, key)
 }
 
 func (k *KeysState) nextTick() {

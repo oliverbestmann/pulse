@@ -58,11 +58,7 @@ func (vs *View) MSAA() bool {
 	return vs.sampleCount > 1
 }
 
-func (vs *View) AsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
-	// vs.surfaceConfig.Format
-	// vs.surfaceConfig.Width
-	// vs.surfaceConfig.Height
-
+func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
 	if vs.MSAA() {
 		screenTexture := ImportTexture(screen, screenView, nil)
 

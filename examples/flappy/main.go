@@ -10,6 +10,7 @@ import (
 	_ "image/png"
 
 	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/go3d/glimpse"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/orion"
 )
@@ -18,6 +19,8 @@ import (
 var _flappy_png []byte
 
 type Game struct {
+	orion.DefaultGame
+
 	times orion.FrameTimes
 
 	background *orion.Image
@@ -30,6 +33,8 @@ type Game struct {
 	yVelocity float32
 
 	pipes []float32
+
+	debugOverlay bool
 }
 
 func (g *Game) Layout(surfaceWidth, surfaceHeight uint32) orion.LayoutOptions {
@@ -69,8 +74,17 @@ func (g *Game) Update() error {
 	g.yVelocity += 300 * dt
 	g.yOffset += g.yVelocity * dt
 
-	if orion.IsKeyJustPressed(32) || orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
+	if orion.IsKeyJustPressed(glimpse.KeySpace) || orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
 		g.yVelocity = -200
+	}
+
+	if orion.IsKeyJustPressed(glimpse.KeyD) {
+		orion.DebugOverlay.RunGC = true
+		orion.DebugOverlay.Enabled = !orion.DebugOverlay.Enabled
+	}
+
+	if orion.IsKeyJustPressed(glimpse.KeyEscape) {
+		return orion.ExitApp
 	}
 
 	return nil
@@ -99,6 +113,9 @@ func (g *Game) Draw(screen *orion.Image) {
 
 	// draw foreground tiles
 	g.drawTiles(screen, g.foreground, cam, float32(256-g.foreground.Height()), 1.0)
+
+	// draw debug overlay
+	orion.DebugOverlay.Draw(screen)
 }
 
 func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[float32], y, parallaxScale float32) {
@@ -116,11 +133,8 @@ func (g *Game) drawTiles(target *orion.Image, tile *orion.Image, cam glm.Mat3[fl
 	}
 }
 
-func (g *Game) FinalizeDrawScreen(surface, offscreen *orion.Image) {
-	orion.DefaultDrawScreen(surface, offscreen, wgpu.FilterModeNearest)
-
-	// draw overlay
-	orion.DebugOverlay.Draw(surface)
+func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
+	orion.DefaultDrawToSurface(surface, offscreen, wgpu.FilterModeNearest)
 }
 
 func main() {

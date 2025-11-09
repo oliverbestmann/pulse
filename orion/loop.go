@@ -3,7 +3,6 @@ package orion
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glimpse"
@@ -57,37 +56,54 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	}
 
 	DebugOverlay.StartGetCurrentTexture()
-	screen, err := CurrentContext().Surface.GetCurrentTexture()
+
+	// get the surface texture (the actual screen)
+	surface, err := CurrentContext().Surface.GetCurrentTexture()
 	if err != nil {
 		return fmt.Errorf("get current texture: %w", err)
 	}
 
 	defer func() {
-		if screen != nil {
-			screen.Release()
+		if surface != nil {
+			surface.Release()
 		}
 	}()
-
-	screenTransform := DefaultScreenTransform(
-		glm.Vec2f{float32(screen.GetWidth()), float32(screen.GetHeight())},
-		loopState.Canvas.Size(),
-	)
-
-	screenTransformInv := DefaultScreenTransformInv(
-		glm.Vec2f{float32(screen.GetWidth()), float32(screen.GetHeight())},
-		loopState.Canvas.Size(),
-	)
 
 	// get input after waiting for a texture to keep input lag low
 	currentInputState.reset()
 	currentInputState.set(inputState())
 
-	currentScreenTransform.reset()
-	currentScreenTransform.set(screenTransform)
+	// calculate screen transform to map input cursor/touch events
+	updateScreenTransform(surface, loopState.Canvas.Size())
 
-	currentScreenTransformInv.reset()
-	currentScreenTransformInv.set(screenTransformInv)
+	// run game.Initialize and game.Update
+	err = performGameUpdate(loopState)
+	if err != nil {
+		return fmt.Errorf("update game: %w", err)
+	}
 
+	// draw to canvas first
+	DebugOverlay.StartGameDraw()
+	loopState.Game.Draw(loopState.Canvas)
+
+	// finalize drawing
+	err = drawToSurface(viewState, loopState.Game, surface, loopState.Canvas)
+	if err != nil {
+		return fmt.Errorf("drawToSurface: %w", err)
+	}
+
+	// present the rendered image
+	viewState.Surface.Present()
+
+	// we do not need to release the screen if present was successful
+	surface = nil
+
+	DebugOverlay.EndFrame()
+
+	return nil
+}
+
+func performGameUpdate(loopState *LoopState) error {
 	DebugOverlay.StartGameUpdate()
 
 	if !loopState.Initialized {
@@ -101,53 +117,44 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	if err := loopState.Game.Update(); err != nil {
 		return fmt.Errorf("update game: %w", err)
 	}
-
-	// draw to canvas first
-	DebugOverlay.StartGameDraw()
-	loopState.Game.Draw(loopState.Canvas)
-
-	// finalize drawing
-	err = present(viewState, screen, loopState.Canvas, finalizeDrawScreenOf(loopState.Game))
-	if err != nil {
-		fmt.Println("error occurred while rendering:", err)
-
-		errStr := err.Error()
-		switch {
-		case strings.Contains(errStr, "Surface timed out"):
-		case strings.Contains(errStr, "Surface is outdated"):
-		case strings.Contains(errStr, "Surface was lost"):
-		default:
-			return fmt.Errorf("render frame: %w", err)
-		}
-	}
-
-	// we do not need to release the screen if present was successful
-	screen = nil
-
-	DebugOverlay.EndFrame()
-
 	return nil
 }
 
-func present(ctx *pulse.View, screen *wgpu.Texture, canvas *Image, draw FinalizeDrawScreen) error {
-	screenView, err := screen.CreateView(nil)
+func updateScreenTransform(surface *wgpu.Texture, offscreenSize glm.Vec2f) {
+	screenTransform := DefaultScreenTransform(
+		glm.Vec2f{float32(surface.GetWidth()), float32(surface.GetHeight())},
+		offscreenSize,
+	)
+
+	screenTransformInv := DefaultScreenTransformInv(
+		glm.Vec2f{float32(surface.GetWidth()), float32(surface.GetHeight())},
+		offscreenSize,
+	)
+
+	currentScreenTransform.reset()
+	currentScreenTransform.set(screenTransform)
+
+	currentScreenTransformInv.reset()
+	currentScreenTransformInv.set(screenTransformInv)
+}
+
+func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Image) error {
+	surfaceView, err := surface.CreateView(nil)
 	if err != nil {
 		return fmt.Errorf("get texture: %w", err)
 	}
 
-	defer screenView.Release()
+	defer surfaceView.Release()
 
-	surfaceTexture := ctx.AsTexture(screen, screenView)
+	surfaceTexture := ctx.SurfaceAsTexture(surface, surfaceView)
 	surfaceImage := asImage(surfaceTexture)
 
-	// then paint canvas to the screen surface
-	draw(surfaceImage, canvas)
+	// then paint canvas to the surface
+
+	game.DrawToSurface(surfaceImage, screen)
 
 	// flushes any outstanding pipelines
 	SwitchToCommand(nil)
-
-	// present the rendered image
-	ctx.Surface.Present()
 
 	return nil
 }
@@ -160,21 +167,9 @@ func layoutIsCompatible(layout LayoutOptions, canvas *Image) bool {
 		canvas.MSAA() == layout.MSAA
 }
 
-type FinalizeDrawScreen = func(screen, canvas *Image)
-
-func finalizeDrawScreenOf(game Game) FinalizeDrawScreen {
-	if game, ok := game.(GameWithFinalizeDrawScreen); ok {
-		return game.FinalizeDrawScreen
-	}
-
-	return func(screen, canvas *Image) {
-		DefaultDrawScreen(screen, canvas, wgpu.FilterModeLinear)
-	}
-}
-
-func DefaultScreenTransform(screenSize, canvasSize glm.Vec2f) glm.Mat3[float32] {
-	cw, ch := canvasSize.XY()
-	sw, sh := screenSize.XY()
+func DefaultScreenTransform(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32] {
+	cw, ch := screenSize.XY()
+	sw, sh := surfaceSize.XY()
 
 	canvasAspect := cw / ch
 	screenAspect := sw / sh
@@ -193,9 +188,9 @@ func DefaultScreenTransform(screenSize, canvasSize glm.Vec2f) glm.Mat3[float32] 
 	return glm.TranslationMat3(xOffset, yOffset).Scale(scale, scale)
 }
 
-func DefaultScreenTransformInv(screenSize, canvasSize glm.Vec2f) glm.Mat3[float32] {
-	cw, ch := canvasSize.XY()
-	sw, sh := screenSize.XY()
+func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32] {
+	cw, ch := screenSize.XY()
+	sw, sh := surfaceSize.XY()
 
 	canvasAspect := cw / ch
 	screenAspect := sw / sh
@@ -215,9 +210,10 @@ func DefaultScreenTransformInv(screenSize, canvasSize glm.Vec2f) glm.Mat3[float3
 	return sm.Mul(glm.TranslationMat3(-xOffset, -yOffset))
 }
 
-func DefaultDrawScreen(screen, canvas *Image, filter wgpu.FilterMode) {
-	screen.DrawImage(canvas, &DrawImageOptions{
-		Transform:  DefaultScreenTransform(screen.Size(), canvas.Size()),
+func DefaultDrawToSurface(surface, offscreen *Image, filter wgpu.FilterMode) {
+	surface.Clear(Color{0, 0, 0, 1})
+	surface.DrawImage(offscreen, &DrawImageOptions{
+		Transform:  DefaultScreenTransform(surface.Size(), offscreen.Size()),
 		FilterMode: filter,
 		BlendState: wgpu.BlendStateReplace,
 	})

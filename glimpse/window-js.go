@@ -3,6 +3,7 @@
 package glimpse
 
 import (
+	"log/slog"
 	"syscall/js"
 
 	"github.com/cogentcore/webgpu/wgpu"
@@ -45,20 +46,40 @@ func NewWindow(width, height int, title string) (Window, error) {
 	}))
 
 	document.Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
-		jsCode := args[0].Get("keyCode").Int()
-		keyCode := KeyCode(jsCode)
-		win.input.Keys.press(keyCode)
+		key, ok := keyOf(args[0])
+		if ok {
+			win.input.Keys.press(key)
+		}
+
 		return nil
 	}))
 
 	document.Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
-		jsCode := args[0].Get("keyCode").Int()
-		keyCode := KeyCode(jsCode)
-		win.input.Keys.release(keyCode)
+		key, ok := keyOf(args[0])
+		if ok {
+			win.input.Keys.release(key)
+		}
+
 		return nil
 	}))
 
 	return win, nil
+}
+
+func keyOf(event js.Value) (key Key, ok bool) {
+	jsCode := event.Get("code").String()
+
+	key, ok = jsToKey[jsCode]
+	if !ok {
+		key := event.Get("key").String()
+		slog.Warn(
+			"Unknown key code",
+			slog.String("event.code", jsCode),
+			slog.String("event.key", key),
+		)
+	}
+
+	return
 }
 
 func (g *jsWindow) ShouldClose() bool {
