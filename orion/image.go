@@ -161,6 +161,16 @@ func (i *Image) SubImage(x, y, width, height uint32) *Image {
 	}
 }
 
+func (i *Image) WritePixels(pixels []byte) {
+	ctx := CurrentContext()
+	err := i.texture.WritePixels(ctx, pixels)
+	Handle(err, "upload pixel data to image")
+}
+
+func (i *Image) Texture() *pulse.Texture {
+	return i.texture
+}
+
 func DecodeImageFromBytes(buf []byte) (*Image, error) {
 	ctx := currentContext.Get()
 

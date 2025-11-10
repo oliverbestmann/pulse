@@ -7,12 +7,27 @@ struct Particle {
 struct SpriteInstance {
     color: array<f32, 4>,
 
-    uv_offset: array<f32, 2>,
-    uv_scale: array<f32, 2>,
-
     tr_row0: array<f32, 3>,
     tr_row1: array<f32, 3>,
+
+    source_rect: Rect,
+    target_rect: Rect,
 };
+
+struct Rect {
+    pos_packed: u32,
+    size_packed: u32,
+}
+
+fn pack_rect(x: u32, y: u32, w: u32, h: u32) -> Rect {
+    let pos = (y << 16) | (x & 0xffff);
+    let size = (h << 16) | (w & 0xffff);
+
+    var rect: Rect;
+    rect.pos_packed = pos;
+    rect.size_packed = size;
+    return rect;
+}
 
 @group(0) @binding(0)
 var<storage, read_write> data: array<Particle>;
@@ -43,11 +58,8 @@ fn update_particles(
     data[i].color.a,
   );
 
-  sprites[i].uv_offset[0] = 0;
-  sprites[i].uv_offset[1] = 0;
-
-  sprites[i].uv_scale[0] = 1;
-  sprites[i].uv_scale[1] = 1;
+  sprites[i].source_rect = pack_rect(0, 0, 64, 64);
+  sprites[i].target_rect = pack_rect(0, 0, 0xffff, 0xffff);
 
   let tr = transpose(data[i].transform);
   sprites[i].tr_row0[0] = tr[0].x;
