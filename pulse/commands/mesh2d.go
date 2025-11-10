@@ -1,4 +1,4 @@
-package pulse
+package commands
 
 import (
 	_ "embed"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/go3d/pulse"
 )
 
 //go:embed mesh2d.wgsl
@@ -18,7 +19,7 @@ var mesh2dShaderCode string
 const maxMeshVertices = 128 * 1024 * 3
 
 type mesh2dBatchConfig struct {
-	target     *RenderTarget
+	target     *pulse.Texture
 	blendState wgpu.BlendState
 	shader     string
 }
@@ -27,13 +28,13 @@ type MeshVertex struct {
 	_ structs.HostLayout
 
 	Position glm.Vec2f
-	Color    Color
+	Color    pulse.Color
 }
 
 type Mesh2dCommand struct {
-	ctx *Context
+	ctx *pulse.Context
 
-	pipelineCache *PipelineCache[mesh2dRenderPipeline]
+	pipelineCache *pulse.PipelineCache[mesh2dRenderPipeline]
 
 	vertices    []MeshVertex
 	buvVertices *wgpu.Buffer
@@ -41,7 +42,7 @@ type Mesh2dCommand struct {
 	batchConfig mesh2dBatchConfig
 }
 
-func NewMesh2dCommand(ctx *Context) (*Mesh2dCommand, error) {
+func NewMesh2dCommand(ctx *pulse.Context) (*Mesh2dCommand, error) {
 	// create a vertex buffer
 	buvVertices, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",
@@ -58,7 +59,7 @@ func NewMesh2dCommand(ctx *Context) (*Mesh2dCommand, error) {
 		buvVertices: buvVertices,
 	}
 
-	p.pipelineCache = NewPipelineCache[mesh2dRenderPipeline](ctx)
+	p.pipelineCache = pulse.NewPipelineCache[mesh2dRenderPipeline](ctx)
 
 	return p, nil
 }
@@ -73,19 +74,19 @@ type DrawMesh2dOptions struct {
 	Shader string
 }
 
-func (p *Mesh2dCommand) DrawTriangles(dest *RenderTarget, opts DrawMesh2dOptions) error {
+func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOptions) error {
 	if opts.Shader == "" {
 		opts.Shader = mesh2dShaderCode
 	}
 
 	batchConfig := mesh2dBatchConfig{
-		target:     dest,
+		target:     target,
 		blendState: opts.BlendState,
 		shader:     opts.Shader,
 	}
 
 	// build a new view transform
-	vw, vh := batchConfig.target.Region.Width(), batchConfig.target.Region.Height()
+	vw, vh := batchConfig.target.Width(), batchConfig.target.Height()
 	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
 
 	// model view matrix
@@ -126,8 +127,8 @@ func (p *Mesh2dCommand) Flush() error {
 	slog.Debug("Rendering triangles", slog.Int("vertexCount", len(p.vertices)))
 
 	pipelineConfig := mesh2dRenderPipeline{
-		TargetFormat:      batchConfig.target.Format,
-		TargetSampleCount: batchConfig.target.SampleCount,
+		TargetFormat:      batchConfig.target.Format(),
+		TargetSampleCount: batchConfig.target.SampleCount(),
 		BlendState:        batchConfig.blendState,
 		ShaderSource:      batchConfig.shader,
 	}
@@ -148,12 +149,14 @@ func (p *Mesh2dCommand) Flush() error {
 	}
 	defer encoder.Release()
 
+	view, resolveTarget := batchConfig.target.Views()
+
 	pass := encoder.BeginRenderPass(&wgpu.RenderPassDescriptor{
 		Label: "RenderPassMesh",
 		ColorAttachments: []wgpu.RenderPassColorAttachment{
 			{
-				View:          batchConfig.target.View,
-				ResolveTarget: batchConfig.target.ResolveTarget,
+				View:          view,
+				ResolveTarget: resolveTarget,
 				LoadOp:        wgpu.LoadOpLoad,
 				StoreOp:       wgpu.StoreOpStore,
 			},
@@ -166,7 +169,12 @@ func (p *Mesh2dCommand) Flush() error {
 		}
 	}()
 
+	// set target region as clip rect
+	sx, sy := batchConfig.target.Offset().XY()
+	sw, sh := batchConfig.target.Size().XY()
+
 	pass.SetPipeline(pc.Pipeline)
+	pass.SetScissorRect(sx, sy, sw, sh)
 	pass.SetVertexBuffer(0, p.buvVertices, 0, wgpu.WholeSize)
 	pass.Draw(uint32(len(p.vertices)), 1, 0, 0)
 

@@ -1,4 +1,4 @@
-package pulse
+package commands
 
 import (
 	_ "embed"
@@ -8,18 +8,19 @@ import (
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/go3d/pulse"
 )
 
 //go:embed font.png
 var _font_png []byte
 
 type TextCommand struct {
-	texture *Texture
+	texture *pulse.Texture
 	sprites *SpriteCommand
 }
 
-func NewTextCommand(ctx *Context, sprites *SpriteCommand) (*TextCommand, error) {
-	texture, err := DecodeTextureFromMemory(ctx, _font_png)
+func NewTextCommand(ctx *pulse.Context, sprites *SpriteCommand) (*TextCommand, error) {
+	texture, err := pulse.DecodeTextureFromMemory(ctx, _font_png)
 	if err != nil {
 		return nil, fmt.Errorf("load font texture: %w", err)
 	}
@@ -30,11 +31,11 @@ func NewTextCommand(ctx *Context, sprites *SpriteCommand) (*TextCommand, error) 
 type DrawTextOptions struct {
 	Text      string
 	Transform glm.Mat3f
-	Color     Color
+	Color     pulse.Color
 	TabWidth  uint
 }
 
-func (t *TextCommand) DrawText(dest *Texture, opts DrawTextOptions) error {
+func (t *TextCommand) DrawText(dest *pulse.Texture, opts DrawTextOptions) error {
 	spriteOpts := DrawSpriteOptions{
 		Color:        opts.Color,
 		FilterMode:   wgpu.FilterModeNearest,
@@ -82,14 +83,14 @@ func (t *TextCommand) DrawText(dest *Texture, opts DrawTextOptions) error {
 		charTransform := scale.Translate(pos.XY()).Mul(baseTransform)
 
 		// draw shadow
-		spriteOpts.Color = Color{0, 0, 0, 1}.Mul(opts.Color)
+		spriteOpts.Color = pulse.Color{0, 0, 0, 1}.Mul(opts.Color)
 		spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
 		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)
 		}
 
 		// draw the actual text
-		spriteOpts.Color = Color{1, 1, 1, 1}.Mul(opts.Color)
+		spriteOpts.Color = pulse.Color{1, 1, 1, 1}.Mul(opts.Color)
 		spriteOpts.Transform = opts.Transform.Mul(charTransform)
 		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)

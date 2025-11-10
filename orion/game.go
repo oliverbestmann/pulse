@@ -4,13 +4,10 @@ import (
 	"errors"
 
 	"github.com/cogentcore/webgpu/wgpu"
-	"github.com/oliverbestmann/go3d/pulse"
 )
 
 // ExitApp can be returned from Game.Update to exit the app
 var ExitApp = errors.New("app is existing")
-
-type RenderTarget = pulse.RenderTarget
 
 type Game interface {
 	Layout(surfaceWidth, surfaceHeight uint32) LayoutOptions

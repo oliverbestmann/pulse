@@ -1,21 +1,22 @@
-package pulse
+package commands
 
 import (
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/go3d/pulse"
 )
 
 type ClearCommand struct {
 	device        *wgpu.Device
 	spriteCommand *SpriteCommand
 
-	whiteTexture      *Texture
+	whiteTexture      *pulse.Texture
 	whiteTextureClear bool
 }
 
-func NewClear(ctx *Context, spriteCommand *SpriteCommand) *ClearCommand {
+func NewClear(ctx *pulse.Context, spriteCommand *SpriteCommand) *ClearCommand {
 	// TODO find a better solution, maybe a simpler render pipeline?
-	whiteTexture, _ := NewTexture(ctx, NewTextureOptions{
+	whiteTexture, _ := pulse.NewTexture(ctx, pulse.NewTextureOptions{
 		Label:  "White",
 		Format: wgpu.TextureFormatRGBA8Unorm,
 		Width:  1,
@@ -25,7 +26,7 @@ func NewClear(ctx *Context, spriteCommand *SpriteCommand) *ClearCommand {
 	return &ClearCommand{device: ctx.Device, spriteCommand: spriteCommand, whiteTexture: whiteTexture}
 }
 
-func (c *ClearCommand) Clear(target *Texture, color Color) error {
+func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) error {
 	enc, err := c.device.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{
 		Label: "ClearTexture",
 	})
@@ -90,7 +91,7 @@ func (c *ClearCommand) Clear(target *Texture, color Color) error {
 		if !c.whiteTextureClear {
 			c.whiteTextureClear = true
 
-			if err := c.Clear(c.whiteTexture, ColorWhite); err != nil {
+			if err := c.Clear(c.whiteTexture, pulse.ColorWhite); err != nil {
 				return err
 			}
 		}

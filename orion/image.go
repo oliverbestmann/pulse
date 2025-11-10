@@ -6,6 +6,7 @@ import (
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/go3d/pulse/commands"
 )
 
 type Color = glm.Vec4f
@@ -89,7 +90,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.Draw(i.texture, source.texture, pulse.DrawSpriteOptions{
+	err := sprites.Draw(i.texture, source.texture, commands.DrawSpriteOptions{
 		Transform:    opts.Transform,
 		Color:        opts.ColorScale.ToColor(),
 		FilterMode:   filterMode,
@@ -119,7 +120,7 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.DrawFromGPU(i.texture, source.texture, pulse.DrawSpriteFromGPUOptions{
+	err := sprites.DrawFromGPU(i.texture, source.texture, commands.DrawSpriteFromGPUOptions{
 		Buffer:        buf,
 		InstanceCount: particleCount,
 		FilterMode:    filterMode,
@@ -129,6 +130,54 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 	})
 
 	Handle(err, "draw image from gpu buffer")
+}
+
+type Vertex2d struct {
+	Position   glm.Vec2f
+	ColorScale ColorScale
+}
+
+type DrawTrianglesOptions struct {
+	Transform  glm.Mat3f
+	ColorScale ColorScale
+	BlendState wgpu.BlendState
+	Shader     string
+}
+
+func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
+	mesh := mesh2dCommand.Get()
+	SwitchToCommand(mesh)
+
+	if opts == nil {
+		opts = &DrawTrianglesOptions{}
+	}
+
+	blendState := BlendStateDefault
+
+	if opts.BlendState != (wgpu.BlendState{}) {
+		blendState = opts.BlendState
+	}
+
+	// extra color scale to scale all vertices with
+	// TODO move to the gpu
+	colorScale := opts.ColorScale.ToColor()
+
+	transformed := make([]commands.MeshVertex, len(vertices))
+	for idx := range vertices {
+		transformed[idx] = commands.MeshVertex{
+			Position: vertices[idx].Position,
+			Color:    vertices[idx].ColorScale.ToColor().Mul(colorScale),
+		}
+	}
+
+	err := mesh.DrawTriangles(i.texture, commands.DrawMesh2dOptions{
+		Transform:  opts.Transform,
+		BlendState: blendState,
+		Vertices:   transformed,
+		Shader:     opts.Shader,
+	})
+
+	Handle(err, "draw triangles")
 }
 
 func (i *Image) Sizef() glm.Vec2f {

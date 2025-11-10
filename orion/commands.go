@@ -2,26 +2,27 @@ package orion
 
 import (
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/go3d/pulse/commands"
 )
 
-var clearCommand global[*pulse.ClearCommand]
-var spriteCommand global[*pulse.SpriteCommand]
-var mesh2dCommand global[*pulse.Mesh2dCommand]
-var textCommand global[*pulse.TextCommand]
+var clearCommand global[*commands.ClearCommand]
+var spriteCommand global[*commands.SpriteCommand]
+var mesh2dCommand global[*commands.Mesh2dCommand]
+var textCommand global[*commands.TextCommand]
 
 func initializeCommands(ctx *pulse.Context) {
 
-	sprite, err := pulse.NewSpriteCommand(ctx)
+	sprite, err := commands.NewSpriteCommand(ctx)
 	Handle(err, "initialize sprite command")
 	spriteCommand.set(sprite)
 
-	clearCommand.set(pulse.NewClear(ctx, sprite))
+	clearCommand.set(commands.NewClear(ctx, sprite))
 
-	mesh2d, err := pulse.NewMesh2dCommand(ctx)
+	mesh2d, err := commands.NewMesh2dCommand(ctx)
 	Handle(err, "initialize mesh2d command")
 	mesh2dCommand.set(mesh2d)
 
-	text, err := pulse.NewTextCommand(ctx, sprite)
+	text, err := commands.NewTextCommand(ctx, sprite)
 	Handle(err, "initialize text command")
 	textCommand.set(text)
 }

@@ -1,4 +1,4 @@
-package pulse
+package commands
 
 import (
 	_ "embed"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/go3d/pulse"
 )
 
 //go:embed sprite2d.wgsl
@@ -22,7 +23,7 @@ type spriteVertexUniforms struct {
 }
 
 type spriteBatchConfig struct {
-	target              *Texture
+	target              *pulse.Texture
 	texture             *wgpu.TextureView
 	filterMode          wgpu.FilterMode
 	blendState          wgpu.BlendState
@@ -35,7 +36,7 @@ type spriteBatchConfig struct {
 
 type spriteInstance struct {
 	// Color to tint the sprite with
-	Color Color
+	Color pulse.Color
 
 	// first and second row of the transposed affine
 	ModelTransposedCol0 glm.Vec3f
@@ -53,9 +54,9 @@ type spriteInstance struct {
 }
 
 type SpriteCommand struct {
-	ctx *Context
+	ctx *pulse.Context
 
-	pipelineCache *PipelineCache[spritePipelineConfig]
+	pipelineCache *pulse.PipelineCache[spritePipelineConfig]
 
 	instances    []spriteInstance
 	bufInstances *wgpu.Buffer
@@ -66,7 +67,7 @@ type SpriteCommand struct {
 	batchConfig spriteBatchConfig
 }
 
-func NewSpriteCommand(ctx *Context) (*SpriteCommand, error) {
+func NewSpriteCommand(ctx *pulse.Context) (*SpriteCommand, error) {
 	// create a vertex buffer
 	bufInstances, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Sprite.Instances",
@@ -105,14 +106,14 @@ func NewSpriteCommand(ctx *Context) (*SpriteCommand, error) {
 		bufVertexUniforms: bufVertexUniforms,
 	}
 
-	p.pipelineCache = NewPipelineCache[spritePipelineConfig](ctx)
+	p.pipelineCache = pulse.NewPipelineCache[spritePipelineConfig](ctx)
 
 	return p, nil
 }
 
 type DrawSpriteOptions struct {
 	Transform    glm.Mat3f
-	Color        Color
+	Color        pulse.Color
 	FilterMode   wgpu.FilterMode
 	BlendState   wgpu.BlendState
 	AddressModeU wgpu.AddressMode
@@ -122,7 +123,7 @@ type DrawSpriteOptions struct {
 	Shader string
 }
 
-func (p *SpriteCommand) Draw(dest *Texture, source *Texture, opts DrawSpriteOptions) error {
+func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteOptions) error {
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
 	}
@@ -150,8 +151,11 @@ func (p *SpriteCommand) Draw(dest *Texture, source *Texture, opts DrawSpriteOpti
 		p.batchConfig = batchConfig
 	}
 
-	sw, sh := source.region.Size().XY()
-	dw, dh := dest.region.Size().XY()
+	sx, sy := source.Offset().XY()
+	sw, sh := source.Size().XY()
+
+	dx, dy := dest.Offset().XY()
+	dw, dh := dest.Size().XY()
 
 	p.instances = append(p.instances, spriteInstance{
 		Color:               opts.Color,
@@ -159,15 +163,15 @@ func (p *SpriteCommand) Draw(dest *Texture, source *Texture, opts DrawSpriteOpti
 		ModelTransposedCol1: opts.Transform.Row(1),
 
 		SourceRegion: glm.Vec4uh{
-			uint16(source.region.Min[0]),
-			uint16(source.region.Min[1]),
+			uint16(sx),
+			uint16(sy),
 			uint16(sw),
 			uint16(sh),
 		},
 
 		TargetRegion: glm.Vec4uh{
-			uint16(dest.region.Min[0]),
-			uint16(dest.region.Min[1]),
+			uint16(dx),
+			uint16(dy),
 			uint16(dw),
 			uint16(dh),
 		},
@@ -187,7 +191,7 @@ type DrawSpriteFromGPUOptions struct {
 	Shader       string
 }
 
-func (p *SpriteCommand) DrawFromGPU(dest *Texture, source *Texture, opts DrawSpriteFromGPUOptions) error {
+func (p *SpriteCommand) DrawFromGPU(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteFromGPUOptions) error {
 	if err := p.Flush(); err != nil {
 		return fmt.Errorf("flush: %w", err)
 	}
@@ -236,7 +240,7 @@ func (p *SpriteCommand) Flush() error {
 		y1 = max(y1, p.instances[idx].TargetRegion[1]+p.instances[idx].TargetRegion[3])
 	}
 
-	rect := Rectangle2u{
+	rect := pulse.Rectangle2u{
 		Min: glm.Vec2[uint32]{
 			uint32(x0), uint32(y0),
 		},
@@ -248,7 +252,7 @@ func (p *SpriteCommand) Flush() error {
 	return p.flushWith(p.bufInstances, uint32(len(p.instances)), &rect)
 }
 
-func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *Rectangle2u) error {
+func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *pulse.Rectangle2u) error {
 	defer p.reset()
 
 	batchConfig := p.batchConfig
@@ -266,7 +270,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		MaxAnisotropy: 1,
 	}
 
-	sampler, err := CachedSampler(p.ctx.Device, descSampler)
+	sampler, err := pulse.CachedSampler(p.ctx.Device, descSampler)
 	if err != nil {
 		return err
 	}
@@ -322,7 +326,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	}
 
 	// upload to uniform buffer
-	err = p.ctx.WriteBuffer(p.bufVertexUniforms, 0, AsByteSlice(&uni))
+	err = p.ctx.WriteBuffer(p.bufVertexUniforms, 0, pulse.AsByteSlice(&uni))
 	if err != nil {
 		return fmt.Errorf("update view transform buffer: %w", err)
 	}
