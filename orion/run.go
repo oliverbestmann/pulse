@@ -3,6 +3,7 @@ package orion
 import (
 	"errors"
 	"fmt"
+	"runtime"
 
 	"github.com/oliverbestmann/go3d/glimpse"
 	"github.com/oliverbestmann/go3d/pulse"
@@ -12,13 +13,15 @@ type RunGameOptions struct {
 	// game to run. This is the only field that is required
 	Game Game
 
-	WindowWidth  int
-	WindowHeight int
-	WindowTitle  string
+	WindowWidth     int
+	WindowHeight    int
+	WindowTitle     string
+	WindowResizable bool
 }
 
 func RunGame(opts RunGameOptions) error {
 	game := opts.Game
+
 	if game == nil {
 		return errors.New("game must not be nil")
 	}
@@ -40,6 +43,7 @@ func RunGame(opts RunGameOptions) error {
 		opts.WindowWidth,
 		opts.WindowHeight,
 		opts.WindowTitle,
+		opts.WindowResizable,
 	)
 	if err != nil {
 		return fmt.Errorf("create window: %w", err)
@@ -53,8 +57,16 @@ func RunGame(opts RunGameOptions) error {
 		return fmt.Errorf("initializing wgpu: %w", err)
 	}
 
-	// TODO this crashes bad if surface is still in use
 	defer ctx.Release()
+
+	if runtime.GOOS != "js" {
+		// print adapter info
+		adapterInfo := ctx.Adapter.GetInfo()
+		fmt.Printf("Using device: %s\n", adapterInfo.Device)
+		fmt.Printf("Description:  %s\n", adapterInfo.Description)
+		fmt.Printf("Backend:      %s\n", adapterInfo.BackendType)
+		fmt.Printf("Vendor:       %s\n", adapterInfo.Vendor)
+	}
 
 	// initialize the view
 	view, err := pulse.NewView(ctx, false, false)

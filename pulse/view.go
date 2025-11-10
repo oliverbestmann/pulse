@@ -67,15 +67,15 @@ func (vs *View) Depth() bool {
 
 func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
 	if vs.MSAA() {
-		screenTexture := ImportTexture(screen, screenView, nil)
+		screenTexture := WrapTexture(screen, screenView, nil)
 
-		return ImportTexture(
+		return WrapTexture(
 			vs.msaaTexture.texture,
 			vs.msaaTexture.textureView,
 			screenTexture,
 		)
 	} else {
-		return ImportTexture(
+		return WrapTexture(
 			screen,
 			screenView,
 			nil,

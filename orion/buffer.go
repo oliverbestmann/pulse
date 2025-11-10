@@ -25,12 +25,6 @@ func CreateBufferInit(desc wgpu.BufferInitDescriptor) *wgpu.Buffer {
 }
 
 func WriteToBuffer[T any](target *wgpu.Buffer, values []T) {
-	ctx := CurrentContext()
-
-	// copy CPU to GPU
-	queue := ctx.GetQueue()
-	defer queue.Release()
-
-	err := queue.WriteBuffer(target, 0, wgpu.ToBytes(values))
+	err := CurrentContext().WriteBuffer(target, 0, wgpu.ToBytes(values))
 	Handle(err, "write to buffer")
 }

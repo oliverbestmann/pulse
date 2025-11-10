@@ -131,8 +131,8 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 	Handle(err, "draw image from gpu buffer")
 }
 
-func (i *Image) Size() glm.Vec2f {
-	return i.texture.Sizef()
+func (i *Image) Sizef() glm.Vec2f {
+	return i.texture.Size().ToVec2f()
 }
 
 func (i *Image) Width() uint32 {
@@ -148,7 +148,7 @@ func (i *Image) Format() wgpu.TextureFormat {
 }
 
 func (i *Image) MSAA() bool {
-	return i.texture.MSAA()
+	return i.texture.SampleCount() > 1
 }
 
 func (i *Image) SubImage(x, y, width, height uint32) *Image {

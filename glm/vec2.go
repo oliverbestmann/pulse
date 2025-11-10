@@ -51,6 +51,20 @@ func (lhs Vec2[T]) Div(rhs Vec2[T]) Vec2[T] {
 	}
 }
 
+func (lhs Vec2[T]) Min(rhs Vec2[T]) Vec2[T] {
+	return Vec2[T]{
+		min(lhs[0], rhs[0]),
+		min(lhs[1], rhs[1]),
+	}
+}
+
+func (lhs Vec2[T]) Max(rhs Vec2[T]) Vec2[T] {
+	return Vec2[T]{
+		max(lhs[0], rhs[0]),
+		max(lhs[1], rhs[1]),
+	}
+}
+
 func (lhs Vec2[T]) Extend(z T) Vec3[T] {
 	return Vec3[T]{lhs[0], lhs[1], z}
 }
@@ -66,4 +80,8 @@ func (lhs Vec2[T]) XY() (x, y T) {
 	x = lhs[0]
 	y = lhs[1]
 	return
+}
+
+func (lhs Vec2[T]) ToVec2f() Vec2f {
+	return Vec2f{float32(lhs[0]), float32(lhs[1])}
 }

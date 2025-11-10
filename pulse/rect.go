@@ -1,6 +1,8 @@
 package pulse
 
 import (
+	"fmt"
+
 	"github.com/oliverbestmann/go3d/glm"
 	"golang.org/x/exp/constraints"
 )
@@ -19,6 +21,12 @@ type Rectangle2[T numeric] struct {
 
 func RectangleFromSize[T numeric](pos glm.Vec2[T], size glm.Vec2[T]) Rectangle2[T] {
 	return RectangleFromPoints[T](pos, pos.Add(size))
+}
+
+func RectangleFromXYWH[T numeric](x, y, w, h T) Rectangle2[T] {
+	pos := glm.Vec2[T]{x, y}
+	size := glm.Vec2[T]{w, h}
+	return RectangleFromSize[T](pos, size)
 }
 
 func RectangleFromPoints[T numeric](a, b glm.Vec2[T]) Rectangle2[T] {
@@ -51,8 +59,17 @@ func (r Rectangle2[T]) Union(other Rectangle2[T]) Rectangle2[T] {
 	return r.Extend(other.Min).Extend(other.Max)
 }
 
+func (r Rectangle2[T]) Contains(other Rectangle2[T]) bool {
+	return r.Min[0] <= other.Min[0] && r.Min[1] <= other.Min[1] &&
+		r.Max[0] >= other.Max[0] && r.Max[1] >= other.Max[1]
+}
+
 func (r Rectangle2[T]) Center() glm.Vec2[T] {
 	return r.Min.Add(r.Max).Div(glm.Vec2[T]{2, 2})
+}
+
+func (r Rectangle2[T]) Offset() glm.Vec2[T] {
+	return r.Min
 }
 
 func (r Rectangle2[T]) Size() glm.Vec2[T] {
@@ -71,4 +88,9 @@ func (r Rectangle2[T]) XYWH() (T, T, T, T) {
 	x, y := r.Min.XY()
 	w, h := r.Size().XY()
 	return x, y, w, h
+}
+
+func (r Rectangle2[T]) String() string {
+	x, y, w, h := r.XYWH()
+	return fmt.Sprintf("Rect(x=%v, y=%v, w=%v, h=%v)", x, y, w, h)
 }

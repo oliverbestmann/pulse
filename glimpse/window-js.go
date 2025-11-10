@@ -12,9 +12,10 @@ import (
 type jsWindow struct {
 	canvas js.Value
 	input  InputState
+	hidpi  bool
 }
 
-func NewWindow(width, height int, title string) (Window, error) {
+func NewWindow(width, height int, title string, resizable bool) (Window, error) {
 	document := js.Global().Get("document")
 
 	canvas := document.Call("createElement", "canvas")
@@ -25,22 +26,29 @@ func NewWindow(width, height int, title string) (Window, error) {
 
 	win := &jsWindow{
 		canvas: canvas,
+		hidpi:  true,
 	}
 
-	canvas.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
-		scale := devicePixelRatio()
+	configureInput(document, win)
+
+	return win, nil
+}
+
+func configureInput(document js.Value, win *jsWindow) {
+	win.canvas.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
+		scale := win.deviceScale()
 		pageX := args[0].Get("pageX").Float() * scale
 		pageY := args[0].Get("pageY").Float() * scale
 		win.input.Mouse.position(float32(pageX), float32(pageY))
 		return nil
 	}))
 
-	canvas.Call("addEventListener", "pointerdown", js.FuncOf(func(this js.Value, args []js.Value) any {
+	win.canvas.Call("addEventListener", "pointerdown", js.FuncOf(func(this js.Value, args []js.Value) any {
 		win.input.Mouse.press(MouseButton(0))
 		return nil
 	}))
 
-	canvas.Call("addEventListener", "pointerup", js.FuncOf(func(this js.Value, args []js.Value) any {
+	win.canvas.Call("addEventListener", "pointerup", js.FuncOf(func(this js.Value, args []js.Value) any {
 		win.input.Mouse.release(MouseButton(0))
 		return nil
 	}))
@@ -62,8 +70,6 @@ func NewWindow(width, height int, title string) (Window, error) {
 
 		return nil
 	}))
-
-	return win, nil
 }
 
 func keyOf(event js.Value) (key Key, ok bool) {
@@ -87,7 +93,7 @@ func (g *jsWindow) ShouldClose() bool {
 }
 
 func (g *jsWindow) GetSize() (uint32, uint32) {
-	ratio := devicePixelRatio()
+	ratio := g.deviceScale()
 
 	vv := js.Global().Get("visualViewport")
 	width := vv.Get("width").Int()
@@ -95,7 +101,12 @@ func (g *jsWindow) GetSize() (uint32, uint32) {
 	return uint32(float64(width) * ratio), uint32(float64(height) * ratio)
 }
 
-func devicePixelRatio() float64 {
+func (g *jsWindow) deviceScale() float64 {
+	if !g.hidpi {
+		// do not look at the devicePixelRatio
+		return 1.0
+	}
+
 	return js.Global().Get("devicePixelRatio").Float()
 }
 
@@ -115,7 +126,7 @@ func (g *jsWindow) Run(render func(inputState UpdateInputState) error) error {
 	errCh := make(chan error, 1)
 
 	renderOnce := func() bool {
-		resizeCanvas(g.canvas)
+		g.resizeCanvas()
 
 		if err := render(updateInputState); err != nil {
 			errCh <- err
@@ -150,13 +161,13 @@ func (g *jsWindow) Run(render func(inputState UpdateInputState) error) error {
 	return <-errCh
 }
 
-func resizeCanvas(canvas js.Value) {
+func (g *jsWindow) resizeCanvas() {
 	vv := js.Global().Get("visualViewport")
 	viewWidth := vv.Get("width").Float()
 	viewHeight := vv.Get("height").Float()
 
-	ratio := devicePixelRatio()
+	ratio := g.deviceScale()
 
-	canvas.Set("width", viewWidth*ratio)
-	canvas.Set("height", viewHeight*ratio)
+	g.canvas.Set("width", viewWidth*ratio)
+	g.canvas.Set("height", viewHeight*ratio)
 }

@@ -104,8 +104,8 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	}
 
 	region := RectangleFromSize(
-		glm.Vec2[uint32]{},
-		glm.Vec2[uint32]{
+		glm.Vec2u{},
+		glm.Vec2u{
 			desc.Size.Width,
 			desc.Size.Height,
 		},
@@ -127,9 +127,9 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	return t, nil
 }
 
-// ImportTexture creates a texture from an existing wgpu.Texture and wgpu.TextureView. If it is a
+// WrapTexture creates a texture from an existing wgpu.Texture and wgpu.TextureView. If it is a
 // multisample texture, you also need to specify a resolve target.
-func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *Texture) *Texture {
+func WrapTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *Texture) *Texture {
 	if texture.GetSampleCount() > 1 && resolveTarget == nil {
 		panic("no resolveTarget specified for multisample texture")
 	}
@@ -139,8 +139,8 @@ func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolve
 	}
 
 	region := RectangleFromSize(
-		glm.Vec2[uint32]{},
-		glm.Vec2[uint32]{
+		glm.Vec2u{},
+		glm.Vec2u{
 			texture.GetWidth(),
 			texture.GetHeight(),
 		},
@@ -160,7 +160,7 @@ func ImportTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolve
 	return t
 }
 
-func (t *Texture) SubTexture(pos glm.Vec2[uint32], size glm.Vec2[uint32]) *Texture {
+func (t *Texture) SubTexture(pos glm.Vec2u, size glm.Vec2u) *Texture {
 	sub := *t
 
 	pos = t.region.Min.Add(pos)
@@ -181,6 +181,10 @@ func (t *Texture) Root() *Texture {
 	return t.root
 }
 
+func (t *Texture) IsSubTexture() bool {
+	return t != t.root
+}
+
 func (t *Texture) Width() uint32 {
 	return t.region.Width()
 }
@@ -189,40 +193,27 @@ func (t *Texture) Height() uint32 {
 	return t.region.Height()
 }
 
-func (t *Texture) Size() glm.Vec2[uint32] {
+func (t *Texture) Offset() glm.Vec2u {
+	return t.region.Offset()
+}
+
+func (t *Texture) Size() glm.Vec2u {
 	return t.region.Size()
 }
 
-// Widthf is a convenience function that returns Width() as float32
-func (t *Texture) Widthf() float32 {
-	return float32(t.region.Width())
-}
-
-// Heightf is a convenience function that returns Height() as float32
-func (t *Texture) Heightf() float32 {
-	return float32(t.region.Height())
-}
-
-// Sizef is a convenience function that returns Size() as float32
-func (t *Texture) Sizef() glm.Vec2f {
-	x, y := t.Size().XY()
-	return glm.Vec2f{float32(x), float32(y)}
-}
-
 func (t *Texture) UV() Rectangle2f {
-	rootSize := t.root.Sizef()
-	pos := glm.Vec2f{float32(t.region.Min[0]), float32(t.region.Min[1])}
-	uvOffset := pos.Div(rootSize)
-	uvSize := t.Sizef().Div(rootSize)
-	return RectangleFromSize(uvOffset, uvSize)
+	rootSize := t.root.Size().ToVec2f()
+	uvOffset := t.Offset().ToVec2f().Div(rootSize)
+	uvScale := t.Size().ToVec2f().Div(rootSize)
+	return RectangleFromSize(uvOffset, uvScale)
 }
 
 func (t *Texture) Format() wgpu.TextureFormat {
-	return t.texture.GetFormat()
+	return t.format
 }
 
-func (t *Texture) MSAA() bool {
-	return t.texture.GetSampleCount() > 1
+func (t *Texture) SampleCount() uint32 {
+	return t.sampleCount
 }
 
 func (t *Texture) ToWGPUTexture() *wgpu.Texture {
@@ -258,6 +249,63 @@ func (t *Texture) Views() (view, resolveView *wgpu.TextureView) {
 	return
 }
 
+func (t *Texture) WritePixels(ctx *Context, pixels []byte) error {
+	rect := RectangleFromXYWH(0, 0, t.Width(), t.Height())
+
+	return t.WritePixelsToRect(ctx, WritePixelsOptions{
+		Pixels: pixels,
+		Region: rect,
+	})
+}
+
+type WritePixelsOptions struct {
+	Pixels   []byte
+	Region   Rectangle2u
+	Stride   uint32
+	MipLevel uint32
+}
+
+func (t *Texture) WritePixelsToRect(ctx *Context, opts WritePixelsOptions) error {
+	// fail if not in rect
+	if !t.region.Contains(opts.Region) {
+		return fmt.Errorf("target rect %s not in texture region %s", opts.Region, t.region)
+	}
+
+	if opts.Stride == 0 {
+		opts.Stride = opts.Region.Width() * 4
+	}
+
+	layout := &wgpu.TexelCopyBufferLayout{
+		Offset:       0,
+		BytesPerRow:  opts.Stride,
+		RowsPerImage: opts.Region.Height(),
+	}
+
+	size := &wgpu.Extent3D{
+		Width:              opts.Region.Width(),
+		Height:             opts.Region.Height(),
+		DepthOrArrayLayers: 1,
+	}
+
+	dest := &wgpu.TexelCopyTextureInfo{
+		Texture:  t.texture,
+		MipLevel: opts.MipLevel,
+		Origin: wgpu.Origin3D{
+			X: opts.Region.Min[0],
+			Y: opts.Region.Min[1],
+		},
+		Aspect: wgpu.TextureAspectAll,
+	}
+
+	// send data to the gpu
+	err := ctx.WriteTexture(dest, opts.Pixels, layout, size)
+	if err != nil {
+		return fmt.Errorf("copy image data to texture: %w", err)
+	}
+
+	return nil
+}
+
 func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
 	src, _, err := image.Decode(bytes.NewReader(buf))
 	if err != nil {
@@ -284,26 +332,10 @@ func NewTextureFromImage(ctx *Context, src image.Image) (*Texture, error) {
 		return nil, fmt.Errorf("create texture: %w", err)
 	}
 
-	layout := &wgpu.TexelCopyBufferLayout{
-		Offset:       0,
-		BytesPerRow:  t.Width() * 4,
-		RowsPerImage: t.Height(),
-	}
-
-	size := &wgpu.Extent3D{
-		Width:              t.Width(),
-		Height:             t.Height(),
-		DepthOrArrayLayers: 1,
-	}
-
-	dest := t.texture.AsImageCopy()
-
-	queue := ctx.Device.GetQueue()
-	defer queue.Release()
-
-	err = queue.WriteTexture(dest, rgba.Pix, layout, size)
+	err = t.WritePixels(ctx, rgba.Pix)
 	if err != nil {
-		return nil, fmt.Errorf("copy image data to texture: %w", err)
+		t.Release()
+		return nil, fmt.Errorf("upload texture: %w", err)
 	}
 
 	return t, nil

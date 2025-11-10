@@ -95,7 +95,7 @@ func (c *ClearCommand) Clear(target *Texture, color Color) error {
 			}
 		}
 
-		tw, th := target.Sizef().XY()
+		tw, th := target.Size().ToVec2f().XY()
 
 		// draw a color square
 		return c.spriteCommand.Draw(target, c.whiteTexture, DrawSpriteOptions{

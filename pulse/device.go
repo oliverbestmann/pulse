@@ -33,6 +33,7 @@ func init() {
 // this includes the Device, Surface and active Adapter
 type Context struct {
 	*wgpu.Device
+	*wgpu.Queue
 	Surface *wgpu.Surface
 	Adapter *wgpu.Adapter
 }
@@ -70,10 +71,17 @@ func New(sd *wgpu.SurfaceDescriptor) (st *Context, err error) {
 		return
 	}
 
+	st.Queue = st.Device.GetQueue()
+
 	return st, nil
 }
 
 func (d *Context) Release() {
+	if d.Queue != nil {
+		d.Queue.Release()
+		d.Queue = nil
+	}
+
 	if d.Device != nil {
 		d.Device.Release()
 		d.Device = nil

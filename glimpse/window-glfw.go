@@ -18,12 +18,20 @@ type glfwWindow struct {
 	input InputState
 }
 
-func NewWindow(width, height int, title string) (Window, error) {
+func NewWindow(width, height int, title string, resizable bool) (Window, error) {
 	if err := glfw.Init(); err != nil {
 		return nil, fmt.Errorf("initialize glfw: %w", err)
 	}
 
 	glfw.WindowHint(glfw.ClientAPI, glfw.NoAPI)
+
+	if resizable {
+		glfw.WindowHint(glfw.Resizable, glfw.True)
+	} else {
+		glfw.WindowHint(glfw.Resizable, glfw.False)
+	}
+
+	glfw.DefaultWindowHints()
 
 	window, err := glfw.CreateWindow(width, height, title, nil, nil)
 	if err != nil {

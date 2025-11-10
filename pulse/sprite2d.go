@@ -219,10 +219,7 @@ func (p *SpriteCommand) Flush() error {
 
 	slog.Debug("Rendering sprites", slog.Int("instanceCount", len(p.instances)))
 
-	queue := p.ctx.GetQueue()
-	defer queue.Release()
-
-	err := queue.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
+	err := p.ctx.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
 	if err != nil {
 		return fmt.Errorf("update instance buffer: %w", err)
 	}
@@ -256,9 +253,6 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 
 	batchConfig := p.batchConfig
 
-	queue := p.ctx.GetQueue()
-	defer queue.Release()
-
 	descSampler := wgpu.SamplerDescriptor{
 		Label:         "UserTex-Sampler",
 		AddressModeU:  batchConfig.addressModeU,
@@ -279,7 +273,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 
 	pipelineConfig := spritePipelineConfig{
 		TargetFormat:      batchConfig.target.Format(),
-		TargetSampleCount: batchConfig.target.sampleCount,
+		TargetSampleCount: batchConfig.target.SampleCount(),
 		BlendState:        batchConfig.blendState,
 		ShaderSource:      batchConfig.shader,
 	}
@@ -328,7 +322,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	}
 
 	// upload to uniform buffer
-	err = queue.WriteBuffer(p.bufVertexUniforms, 0, AsByteSlice(&uni))
+	err = p.ctx.WriteBuffer(p.bufVertexUniforms, 0, AsByteSlice(&uni))
 	if err != nil {
 		return fmt.Errorf("update view transform buffer: %w", err)
 	}
@@ -385,7 +379,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 
 	defer cmdBuffer.Release()
 
-	queue.Submit(cmdBuffer)
+	p.ctx.Submit(cmdBuffer)
 
 	return nil
 }

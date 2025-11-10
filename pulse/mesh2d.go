@@ -137,10 +137,7 @@ func (p *Mesh2dCommand) Flush() error {
 		return fmt.Errorf("get new pipeline: %w", err)
 	}
 
-	queue := p.ctx.GetQueue()
-	defer queue.Release()
-
-	err = queue.WriteBuffer(p.buvVertices, 0, wgpu.ToBytes(p.vertices))
+	err = p.ctx.WriteBuffer(p.buvVertices, 0, wgpu.ToBytes(p.vertices))
 	if err != nil {
 		return fmt.Errorf("update instance buffer: %w", err)
 	}
@@ -188,7 +185,7 @@ func (p *Mesh2dCommand) Flush() error {
 
 	defer cmdBuffer.Release()
 
-	queue.Submit(cmdBuffer)
+	p.ctx.Submit(cmdBuffer)
 
 	return nil
 }

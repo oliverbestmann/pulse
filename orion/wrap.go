@@ -31,12 +31,6 @@ func CreateBindGroup(descriptor wgpu.BindGroupDescriptor) *wgpu.BindGroup {
 	return res
 }
 
-func GetQueue() *wgpu.Queue {
-	ctx := CurrentContext()
-	queue := ctx.GetQueue()
-	return queue
-}
-
 type CommandEncoder struct {
 	*wgpu.CommandEncoder
 	label string
@@ -92,10 +86,5 @@ func (enc *CommandEncoder) Submit() {
 }
 
 func Submit(cmd *wgpu.CommandBuffer) wgpu.SubmissionIndex {
-	ctx := CurrentContext()
-
-	queue := ctx.GetQueue()
-	defer queue.Release()
-
-	return queue.Submit(cmd)
+	return CurrentContext().Submit(cmd)
 }

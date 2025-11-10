@@ -74,7 +74,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	currentInputState.set(inputState())
 
 	// calculate screen transform to map input cursor/touch events
-	updateScreenTransform(surface, loopState.Canvas.Size())
+	updateScreenTransform(surface, loopState.Canvas.Sizef())
 
 	// run game.Initialize and game.Update
 	err = performGameUpdate(loopState)
@@ -213,7 +213,7 @@ func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float
 func DefaultDrawToSurface(surface, offscreen *Image, filter wgpu.FilterMode) {
 	surface.Clear(Color{0, 0, 0, 1})
 	surface.DrawImage(offscreen, &DrawImageOptions{
-		Transform:  DefaultScreenTransform(surface.Size(), offscreen.Size()),
+		Transform:  DefaultScreenTransform(surface.Sizef(), offscreen.Sizef()),
 		FilterMode: filter,
 		BlendState: wgpu.BlendStateReplace,
 	})
