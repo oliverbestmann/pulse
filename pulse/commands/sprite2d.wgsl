@@ -11,6 +11,12 @@ struct Region {
     size: vec2f,
 };
 
+struct Regions {
+    rects: array<Region, 4>,
+    transforms: array<mat3x3f, 8>,
+    twod: array<array<vec3f, 2>, 4>,
+}
+
 fn decode_region(in: vec2<u32>) -> Region {
     let x = f32((in[0] ) & 0xffff);
     let y = f32((in[0] >> 16) & 0xffff);

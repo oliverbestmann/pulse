@@ -5,31 +5,31 @@ import "math"
 func Perspective[T float](fovY Rad, aspect, near, far T) Mat4[T] {
 	f := T(1 / math.Tan(float64(fovY*0.5)))
 
-	return mat4([16]T{
-		f / aspect, 0, 0, 0,
-		0, f, 0, 0,
-		0, 0, (far + near) / (near - far), -1,
-		0, 0, (2 * far * near) / (near - far), 0,
+	return Mat4Of([4][4]T{
+		{f / aspect, 0, 0, 0},
+		{0, f, 0, 0},
+		{0, 0, (far + near) / (near - far), -1},
+		{0, 0, (2 * far * near) / (near - far), 0},
 	})
 }
 
-func LookAt[T numeric](eye, center, up Vec3[T]) Mat4[T] {
+func LookAt[T Numeric](eye, center, up Vec3[T]) Mat4[T] {
 	f := (center.Sub(eye)).Normalize()
 	s := f.Cross(up).Normalize()
 	u := s.Cross(f)
 
-	return mat4([16]T{
-		s[0], u[0], -f[0], 0,
-		s[1], u[1], -f[1], 0,
-		s[2], u[2], -f[2], 0,
-		-eye.Dot(s), -eye.Dot(u), eye.Dot(f), 1,
+	return Mat4Of([4][4]T{
+		{s[0], u[0], -f[0], 0},
+		{s[1], u[1], -f[1], 0},
+		{s[2], u[2], -f[2], 0},
+		{-eye.Dot(s), -eye.Dot(u), eye.Dot(f), 1},
 	})
 }
 
-func DegToRad[T numeric](deg T) Rad {
+func DegToRad[T Numeric](deg T) Rad {
 	return Rad(float64(deg) * (math.Pi / 180))
 }
 
-func RadToDeg[T numeric](rad Rad) (deg T) {
+func RadToDeg[T Numeric](rad Rad) (deg T) {
 	return T(rad * (180 / math.Pi))
 }

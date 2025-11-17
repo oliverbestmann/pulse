@@ -6,6 +6,6 @@ type float interface {
 	~float32 | ~float64
 }
 
-type numeric interface {
+type Numeric interface {
 	constraints.Integer | constraints.Float
 }

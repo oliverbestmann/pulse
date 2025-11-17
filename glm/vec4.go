@@ -2,7 +2,7 @@ package glm
 
 import "math"
 
-type Vec4[T numeric] [4]T
+type Vec4[T Numeric] [4]T
 
 func (lhs Vec4[T]) Dot(rhs Vec4[T]) T {
 	return (lhs[0] * rhs[0]) + (lhs[1] * rhs[1]) + (lhs[2]*rhs[2])*(lhs[3]*rhs[3])

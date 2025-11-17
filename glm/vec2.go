@@ -2,13 +2,13 @@ package glm
 
 import "math"
 
-type Vec2[T numeric] [2]T
+type Vec2[T Numeric] [2]T
 
 func (lhs Vec2[T]) Dot(rhs Vec2[T]) T {
 	return (lhs[0] * rhs[0]) + (lhs[1] * rhs[1])
 }
 
-func (lhs Vec2[T]) Magnitude() T {
+func (lhs Vec2[T]) Length() T {
 	return T(math.Sqrt(float64(lhs.Dot(lhs))))
 }
 
@@ -20,7 +20,7 @@ func (lhs Vec2[T]) Scale(s T) Vec2[T] {
 }
 
 func (lhs Vec2[T]) Normalize() Vec2[T] {
-	return lhs.Scale(1 / lhs.Magnitude())
+	return lhs.Scale(1.0 / lhs.Length())
 }
 
 func (lhs Vec2[T]) Add(rhs Vec2[T]) Vec2[T] {
@@ -84,4 +84,11 @@ func (lhs Vec2[T]) XY() (x, y T) {
 
 func (lhs Vec2[T]) ToVec2f() Vec2f {
 	return Vec2f{float32(lhs[0]), float32(lhs[1])}
+}
+
+func (lhs Vec2[T]) Recip() Vec2[T] {
+	return Vec2[T]{
+		1.0 / lhs[0],
+		1.0 / lhs[1],
+	}
 }

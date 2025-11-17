@@ -37,7 +37,7 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) error {
 
 	defer enc.Release()
 
-	view, resolveView := target.Views()
+	view, resolveView := target.RenderViews()
 
 	if target == target.Root() {
 		desc := &wgpu.RenderPassDescriptor{

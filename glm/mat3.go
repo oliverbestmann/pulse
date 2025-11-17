@@ -2,11 +2,11 @@ package glm
 
 // Mat3 is a 3x3 matrix.
 // The default value is the identity matrix.
-type Mat3[T numeric] struct {
+type Mat3[T Numeric] struct {
 	values [3][3]T
 }
 
-func Mat3Of[T numeric](m [3][3]T) Mat3[T] {
+func Mat3Of[T Numeric](m [3][3]T) Mat3[T] {
 	const one = 1
 	const zer = 0
 
@@ -20,11 +20,11 @@ func Mat3Of[T numeric](m [3][3]T) Mat3[T] {
 	}
 }
 
-func IdentityMat3[T numeric]() Mat3[T] {
+func IdentityMat3[T Numeric]() Mat3[T] {
 	return Mat3[T]{}
 }
 
-func TranslationMat3[T numeric](x, y T) Mat3[T] {
+func TranslationMat3[T Numeric](x, y T) Mat3[T] {
 	return Mat3Of([3][3]T{
 		{1, 0, 0},
 		{0, 1, 0},
@@ -32,7 +32,7 @@ func TranslationMat3[T numeric](x, y T) Mat3[T] {
 	})
 }
 
-func RotationMat3[T numeric](angle Rad) Mat3[T] {
+func RotationMat3[T Numeric](angle Rad) Mat3[T] {
 	s, c := fastSincos(angle)
 
 	return Mat3Of([3][3]T{
@@ -42,7 +42,7 @@ func RotationMat3[T numeric](angle Rad) Mat3[T] {
 	})
 }
 
-func ScaleMat3[T numeric](x, y T) Mat3[T] {
+func ScaleMat3[T Numeric](x, y T) Mat3[T] {
 	return Mat3Of([3][3]T{
 		{x, 0, 0},
 		{0, y, 0},
@@ -85,11 +85,18 @@ func (lhs Mat3[T]) Mul(rhs Mat3[T]) Mat3[T] {
 	})
 }
 
-func (lhs Mat3[T]) Transform(rhs Vec3[T]) Vec3[T] {
+func (lhs Mat3[T]) Transform(vec Vec3[T]) Vec3[T] {
 	return Vec3[T]{
-		(lhs.m00())*rhs[0] + (lhs.m10())*rhs[1] + (lhs.m20())*rhs[2],
-		(lhs.m01())*rhs[0] + (lhs.m11())*rhs[1] + (lhs.m21())*rhs[2],
-		(lhs.m02())*rhs[0] + (lhs.m12())*rhs[1] + (lhs.m22())*rhs[2],
+		(lhs.m00())*vec[0] + (lhs.m10())*vec[1] + (lhs.m20())*vec[2],
+		(lhs.m01())*vec[0] + (lhs.m11())*vec[1] + (lhs.m21())*vec[2],
+		(lhs.m02())*vec[0] + (lhs.m12())*vec[1] + (lhs.m22())*vec[2],
+	}
+}
+
+func (lhs Mat3[T]) Transform2(vec Vec2[T]) Vec2[T] {
+	return Vec2[T]{
+		(lhs.m00())*vec[0] + (lhs.m10())*vec[1] + (lhs.m20()),
+		(lhs.m01())*vec[0] + (lhs.m11())*vec[1] + (lhs.m21()),
 	}
 }
 
@@ -143,6 +150,53 @@ func (lhs Mat3[T]) ToWGPU() [12]float32 {
 		float32(lhs.m10()), float32(lhs.m11()), float32(lhs.m12()), 0,
 		float32(lhs.m20()), float32(lhs.m21()), float32(lhs.m22()), 0,
 	}
+}
+
+func (lhs Mat3[T]) Values() [3][3]T {
+	values := lhs.values
+	values[0][0] += 1
+	values[1][1] += 1
+	values[2][2] += 1
+	return values
+}
+
+func (lhs Mat3[T]) Invert() Mat3[T] {
+	inv, ok := lhs.TryInvert()
+	if !ok {
+		panic("matrix not invertible")
+	}
+
+	return inv
+}
+
+func (lhs Mat3[T]) TryInvert() (Mat3[T], bool) {
+	var inv [3][3]T
+
+	m := lhs.Values()
+
+	// determinant
+	det := m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) -
+		m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
+		m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0])
+
+	if det == 0 {
+		// singular
+		return Mat3[T]{}, false
+	}
+
+	inv[0][0] = (m[1][1]*m[2][2] - m[1][2]*m[2][1]) / det
+	inv[0][1] = (m[0][2]*m[2][1] - m[0][1]*m[2][2]) / det
+	inv[0][2] = (m[0][1]*m[1][2] - m[0][2]*m[1][1]) / det
+
+	inv[1][0] = (m[1][2]*m[2][0] - m[1][0]*m[2][2]) / det
+	inv[1][1] = (m[0][0]*m[2][2] - m[0][2]*m[2][0]) / det
+	inv[1][2] = (m[0][2]*m[1][0] - m[0][0]*m[1][2]) / det
+
+	inv[2][0] = (m[1][0]*m[2][1] - m[1][1]*m[2][0]) / det
+	inv[2][1] = (m[0][1]*m[2][0] - m[0][0]*m[2][1]) / det
+	inv[2][2] = (m[0][0]*m[1][1] - m[0][1]*m[1][0]) / det
+
+	return Mat3Of(inv), true
 }
 
 func (lhs *Mat3[T]) m00() T {

@@ -2,12 +2,12 @@ package glm
 
 import "math"
 
-type Quaternion[T numeric] struct {
+type Quaternion[T Numeric] struct {
 	V Vec3[T]
 	S T
 }
 
-func QuaternionFromAxisAngle[T numeric](axis Vec3[T], angleRad T) Quaternion[T] {
+func QuaternionFromAxisAngle[T Numeric](axis Vec3[T], angleRad T) Quaternion[T] {
 	sin, cos := math.Sincos(float64(angleRad) * 0.5)
 	return Quaternion[T]{
 		S: T(cos),

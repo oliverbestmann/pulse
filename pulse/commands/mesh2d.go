@@ -149,7 +149,7 @@ func (p *Mesh2dCommand) Flush() error {
 	}
 	defer encoder.Release()
 
-	view, resolveTarget := batchConfig.target.Views()
+	view, resolveTarget := batchConfig.target.RenderViews()
 
 	pass := encoder.BeginRenderPass(&wgpu.RenderPassDescriptor{
 		Label: "RenderPassMesh",

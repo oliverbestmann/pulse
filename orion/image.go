@@ -159,10 +159,11 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 	}
 
 	// extra color scale to scale all vertices with
-	// TODO move to the gpu
+	// TODO move transformation to the gpu?
 	colorScale := opts.ColorScale.ToColor()
 
 	transformed := make([]commands.MeshVertex, len(vertices))
+
 	for idx := range vertices {
 		transformed[idx] = commands.MeshVertex{
 			Position: vertices[idx].Position,

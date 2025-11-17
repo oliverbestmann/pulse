@@ -44,6 +44,13 @@ type NewTextureOptions struct {
 func NewTexture(ctx *Context, opts NewTextureOptions) (*Texture, error) {
 	var sampleCount uint32 = 1
 
+	if isOpenGL(ctx) {
+		// https://github.com/gfx-rs/wgpu/issues/6084
+		// In OpenGL backend, attempting to render to a multisampled texture
+		// with the usages RENDER_ATTACHMENT | TEXTURE_BINDING fails
+		opts.MSAA = false
+	}
+
 	if opts.MSAA {
 		sampleCount = 4
 	}
@@ -69,6 +76,10 @@ func NewTexture(ctx *Context, opts NewTextureOptions) (*Texture, error) {
 	}
 
 	return NewTextureFromDesc(ctx, desc)
+}
+
+func isOpenGL(ctx *Context) bool {
+	return ctx.Adapter.GetInfo().BackendType == wgpu.BackendTypeOpenGL
 }
 
 // NewTextureFromDesc gives you full control and creates a texture directly from
@@ -166,15 +177,11 @@ func (t *Texture) SubTexture(pos glm.Vec2u, size glm.Vec2u) *Texture {
 	pos = t.region.Min.Add(pos)
 	sub.region = RectangleFromSize(pos, size)
 
-	return &sub
-}
-
-func (t *Texture) SourceView() *wgpu.TextureView {
-	if t.resolveTarget != nil {
-		return t.resolveTarget.textureView
+	if sub.resolveTarget != nil {
+		sub.resolveTarget = sub.resolveTarget.SubTexture(pos, size)
 	}
 
-	return t.textureView
+	return &sub
 }
 
 func (t *Texture) Root() *Texture {
@@ -228,6 +235,14 @@ func (t *Texture) ResolveTarget() *Texture {
 	return t.resolveTarget
 }
 
+func (t *Texture) SourceView() *wgpu.TextureView {
+	if t.resolveTarget != nil {
+		return t.resolveTarget.textureView
+	}
+
+	return t.textureView
+}
+
 // Release releases the texture view. This only works for the root texture,
 // not for a sub texture. You must be sure to not use the texture after
 // calling release. It might be better to not call Release at all and let the
@@ -239,7 +254,7 @@ func (t *Texture) Release() {
 	}
 }
 
-func (t *Texture) Views() (view, resolveView *wgpu.TextureView) {
+func (t *Texture) RenderViews() (view, resolveView *wgpu.TextureView) {
 	view = t.textureView
 
 	if t.sampleCount > 1 {
