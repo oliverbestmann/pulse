@@ -31,8 +31,6 @@ func NewWindow(width, height int, title string, resizable bool) (Window, error) 
 		glfw.WindowHint(glfw.Resizable, glfw.False)
 	}
 
-	glfw.DefaultWindowHints()
-
 	window, err := glfw.CreateWindow(width, height, title, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create window: %w", err)
@@ -53,7 +51,7 @@ func (g *glfwWindow) ShouldClose() bool {
 }
 
 func (g *glfwWindow) GetSize() (uint32, uint32) {
-	width, height := g.win.GetSize()
+	width, height := g.win.GetFramebufferSize()
 	return uint32(width), uint32(height)
 }
 
@@ -114,8 +112,9 @@ func configureInput(window *glfw.Window, input *InputState) {
 		}
 	})
 
-	window.SetCursorPosCallback(func(_win *glfw.Window, xpos float64, ypos float64) {
-		input.Mouse.position(float32(xpos), float32(ypos))
+	window.SetCursorPosCallback(func(win *glfw.Window, xpos float64, ypos float64) {
+		scaleX, scaleY := win.GetContentScale()
+		input.Mouse.position(float32(xpos)*scaleX, float32(ypos)*scaleY)
 	})
 }
 

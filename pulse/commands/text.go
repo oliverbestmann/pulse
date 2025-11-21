@@ -29,15 +29,16 @@ func NewTextCommand(ctx *pulse.Context, sprites *SpriteCommand) (*TextCommand, e
 }
 
 type DrawTextOptions struct {
-	Text      string
-	Transform glm.Mat3f
-	Color     pulse.Color
-	TabWidth  uint
+	Text        string
+	Transform   glm.Mat3f
+	TextColor   pulse.Color
+	ShadowColor pulse.Color
+	TabWidth    uint
 }
 
 func (t *TextCommand) DrawText(dest *pulse.Texture, opts DrawTextOptions) error {
 	spriteOpts := DrawSpriteOptions{
-		Color:        opts.Color,
+		Color:        opts.TextColor,
 		FilterMode:   wgpu.FilterModeNearest,
 		BlendState:   wgpu.BlendStateAlphaBlending,
 		AddressModeU: wgpu.AddressModeClampToEdge,
@@ -82,15 +83,17 @@ func (t *TextCommand) DrawText(dest *pulse.Texture, opts DrawTextOptions) error 
 		charTexture := t.texture.SubTexture(posCh, glm.Vec2[uint32]{6, 10})
 		charTransform := scale.Translate(pos.XY()).Mul(baseTransform)
 
-		// draw shadow
-		spriteOpts.Color = pulse.Color{0, 0, 0, 1}.Mul(opts.Color)
-		spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
-		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
-			return fmt.Errorf("draw character %q: %w", ch, err)
+		if opts.ShadowColor[3] > 0 {
+			// draw shadow
+			spriteOpts.Color = opts.ShadowColor
+			spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
+			if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
+				return fmt.Errorf("draw character %q: %w", ch, err)
+			}
 		}
 
 		// draw the actual text
-		spriteOpts.Color = pulse.Color{1, 1, 1, 1}.Mul(opts.Color)
+		spriteOpts.Color = pulse.Color{1, 1, 1, 1}.Mul(opts.TextColor)
 		spriteOpts.Transform = opts.Transform.Mul(charTransform)
 		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
 			return fmt.Errorf("draw character %q: %w", ch, err)

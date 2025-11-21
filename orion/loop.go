@@ -48,6 +48,15 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 
 	// request a new surface if needed
 	if !layoutIsCompatible(layout, loopState.Canvas) {
+		if loopState.Canvas != nil {
+			loopState.Canvas.Texture().Release()
+			loopState.Canvas = nil
+		}
+
+		slog.Info("Allocate new offscreen render target",
+			slog.Int("width", int(layout.Width)),
+			slog.Int("height", int(layout.Height)))
+
 		loopState.Canvas = NewImage(layout.Width, layout.Height, &NewImageOptions{
 			Label:  "OffscreenTarget",
 			Format: layout.Format,
@@ -212,6 +221,7 @@ func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float
 
 func DefaultDrawToSurface(surface, offscreen *Image, filter wgpu.FilterMode) {
 	surface.Clear(Color{0, 0, 0, 1})
+
 	surface.DrawImage(offscreen, &DrawImageOptions{
 		Transform:  DefaultScreenTransform(surface.Sizef(), offscreen.Sizef()),
 		FilterMode: filter,

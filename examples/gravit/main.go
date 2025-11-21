@@ -11,6 +11,7 @@ import (
 
 	_ "image/png"
 
+	"github.com/cogentcore/webgpu/wgpu"
 	"github.com/furui/fastnoiselite-go"
 	b2 "github.com/oliverbestmann/box2d-go"
 	"github.com/oliverbestmann/go3d/glimpse"
@@ -63,8 +64,6 @@ type Particle struct {
 }
 
 type Game struct {
-	orion.DefaultGame
-
 	world b2.World
 
 	lastTime  time.Time
@@ -102,6 +101,10 @@ type Game struct {
 	noise        *fastnoiselite.FastNoiseLite
 	playerImages []*orion.Image
 	hitShip      bool
+}
+
+func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
+	orion.DefaultDrawToSurface(surface, offscreen, wgpu.FilterModeNearest)
 }
 
 func (g *Game) Initialize() error {
@@ -152,7 +155,7 @@ func (g *Game) Initialize() error {
 	shape.IsSensor = 1
 	shape.EnableSensorEvents = 1
 	body.CreateCircleShape(shape, b2.Circle{
-		Radius: 64.0,
+		Radius: 32.0,
 	})
 
 	return nil
@@ -167,7 +170,7 @@ func (g *Game) buildPlayer() Player {
 	bPlayerDef.Type1 = b2.DynamicBody
 	bPlayerDef.LinearVelocity = b2.Vec2{X: -32, Y: -16}
 	bPlayerDef.LinearDamping = 0.0
-	bPlayerDef.Position = b2.Vec2{X: -500, Y: 400}
+	bPlayerDef.Position = b2.Vec2{X: -500, Y: 350}
 	body := g.world.CreateBody(bPlayerDef)
 
 	def := b2.DefaultShapeDef()
@@ -273,7 +276,6 @@ func (g *Game) Update() error {
 	dt, stepCount := g.fixedTimeStep()
 
 	for range stepCount {
-		g.remainingOxygen -= dt
 		g.elapsedTime += dt
 
 		g.world.Step(dt, 4)
@@ -283,6 +285,9 @@ func (g *Game) Update() error {
 		if !g.hitShip {
 			// update player position
 			pl.Position = toVec(pl.Body.GetPosition())
+
+			// reduce oxygen...
+			g.remainingOxygen -= dt
 		}
 
 		if !g.dead && !g.hitShip && orion.IsMouseButtonPressed(orion.MouseButton(0)) {
@@ -393,7 +398,9 @@ func (g *Game) Update() error {
 		}
 
 		if g.hitShip {
+			// expand light cone, and nudge it to the ship
 			pl.LightSize += 200 * dt
+			pl.Position = pl.Position.Scale(1 - dt).Add(g.beacon.Scale(dt))
 		}
 
 		// reduce camera shake
@@ -412,7 +419,7 @@ func (g *Game) pingByPlayer() {
 		Color:  ColorWhite,
 		Size:   100,
 		Width:  100,
-		Speed:  700,
+		Speed:  500,
 	})
 }
 
@@ -519,10 +526,27 @@ func (g *Game) Draw(screen *orion.Image) {
 		})
 	}
 
-	text := fmt.Sprintf("Oxygen remaining: %1.2fsec", max(0, g.remainingOxygen))
+	var text string
+	var color orion.Color
+
+	switch {
+	case g.hitShip:
+		text = "You've made\nit to safety!"
+		color = ColorBlack
+	case g.dead:
+		text = "You're dead,\ntap to try again..."
+		color = ColorWhite
+	default:
+		text = fmt.Sprintf("Oxygen\n%1.2fsec", max(0, g.remainingOxygen))
+		color = ColorWhite
+	}
+
+	pos := pl.Position.Add(glm.Vec2f{-32, 64})
+
 	orion.DebugText(screen, text, &orion.DebugTextOptions{
-		ColorScale: orion.ColorScaleOf(ColorWhite),
-		Transform:  glm.Mat3f{}.Translate(16, 16).Scale(2.0, 2.0),
+		ColorScale:  orion.ColorScaleOf(color),
+		Transform:   toScreen.Translate(pos.XY()).Scale(2.0, 2.0),
+		ShadowColor: orion.Color{0, 0, 0, 0},
 	})
 
 	// draw debug overlay

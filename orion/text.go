@@ -6,9 +6,10 @@ import (
 )
 
 type DebugTextOptions struct {
-	Transform  glm.Mat3f
-	ColorScale ColorScale
-	TabWidth   uint
+	Transform   glm.Mat3f
+	ColorScale  ColorScale
+	ShadowColor Color
+	TabWidth    uint
 }
 
 func DebugText(dest *Image, text string, opts *DebugTextOptions) {
@@ -25,10 +26,11 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 	SwitchToCommand(textCommand)
 
 	err := textCommand.DrawText(dest.texture, commands.DrawTextOptions{
-		Text:      text,
-		Transform: opts.Transform,
-		Color:     opts.ColorScale.ToColor(),
-		TabWidth:  tabWidth,
+		Text:        text,
+		Transform:   opts.Transform,
+		TextColor:   opts.ColorScale.ToColor(),
+		ShadowColor: opts.ShadowColor,
+		TabWidth:    tabWidth,
 	})
 	Handle(err, "render text")
 }
