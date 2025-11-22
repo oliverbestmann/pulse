@@ -184,20 +184,20 @@ func DefaultScreenTransform(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32]
 	screenAspect := sw / sh
 
 	var scale float32
-	var xOffset, yOffset float32 = 1, 1
+	var xOffset, yOffset int = 0, 0
 
 	if canvasAspect >= screenAspect {
 		scale = sw / cw
-		yOffset = (sh - ch*scale) / 2
+		yOffset = int((sh-ch*scale)/2 + 0.5)
 	} else {
 		scale = sh / ch
-		xOffset = (sw - cw*scale) / 2
+		xOffset = int((sw-cw*scale)/2 + 0.5)
 	}
 
-	return glm.TranslationMat3(xOffset, yOffset).Scale(scale, scale)
+	return glm.TranslationMat3(float32(xOffset), float32(yOffset)).Scale(scale, scale)
 }
 
-func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32] {
+func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3f {
 	cw, ch := screenSize.XY()
 	sw, sh := surfaceSize.XY()
 

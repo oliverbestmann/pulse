@@ -35,7 +35,7 @@ func NewWindow(width, height int, title string, resizable bool) (Window, error) 
 }
 
 func configureInput(document js.Value, win *jsWindow) {
-	win.canvas.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
+	win.canvas.Call("addEventListener", "pointermove", js.FuncOf(func(this js.Value, args []js.Value) any {
 		scale := win.deviceScale()
 		pageX := args[0].Get("pageX").Float() * scale
 		pageY := args[0].Get("pageY").Float() * scale

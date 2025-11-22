@@ -66,6 +66,8 @@ type Particle struct {
 type Game struct {
 	world b2.World
 
+	debug bool
+
 	lastTime  time.Time
 	asteroids []Asteroid
 	player    Player
@@ -108,9 +110,6 @@ func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
 }
 
 func (g *Game) Initialize() error {
-	orion.DebugOverlay.Enable(true)
-	orion.DebugOverlay.RunGC = true
-
 	g.lastTime = time.Now()
 
 	g.shipImage, _ = orion.DecodeImageFromBytes(_ship)
@@ -275,7 +274,12 @@ func b2Vecs(vecs []glm.Vec2f) []b2.Vec2 {
 func (g *Game) Update() error {
 	dt, stepCount := g.fixedTimeStep()
 
-	for range stepCount {
+	if orion.IsKeyJustPressed(glimpse.KeyD) {
+		orion.DebugOverlay.Enable(true)
+	}
+
+	for step := range stepCount {
+		firstStep := step == 0
 		g.elapsedTime += dt
 
 		g.world.Step(dt, 4)
@@ -304,14 +308,14 @@ func (g *Game) Update() error {
 				g.spawn(g.player.Position, delta.Normalize().Scale(-50).Add(velocity))
 
 				pl.Thrusting = true
-			} else if orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
+			} else if firstStep && orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
 				g.pingByPlayer()
 			}
 		} else {
 			pl.Thrusting = false
 		}
 
-		if !g.dead && orion.IsKeyJustPressed(glimpse.KeySpace) {
+		if !g.dead && firstStep && orion.IsKeyJustPressed(glimpse.KeySpace) {
 			g.pingByPlayer()
 		}
 
@@ -549,8 +553,8 @@ func (g *Game) Draw(screen *orion.Image) {
 		ShadowColor: orion.Color{0, 0, 0, 0},
 	})
 
-	// draw debug overlay
-	// orion.DebugOverlay.Draw(screen)
+	// draw debug overlay if enabled
+	orion.DebugOverlay.Draw(screen)
 }
 
 func (g *Game) updateToScreenTransform() {
