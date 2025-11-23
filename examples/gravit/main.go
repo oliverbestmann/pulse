@@ -11,7 +11,7 @@ import (
 
 	_ "image/png"
 
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/furui/fastnoiselite-go"
 	b2 "github.com/oliverbestmann/box2d-go"
 	"github.com/oliverbestmann/go3d/glimpse"

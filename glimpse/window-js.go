@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"syscall/js"
 
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type jsWindow struct {

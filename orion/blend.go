@@ -1,6 +1,6 @@
 package orion
 
-import "github.com/cogentcore/webgpu/wgpu"
+import "github.com/oliverbestmann/webgpu/wgpu"
 
 var blendComponentAdd = wgpu.BlendComponent{
 	SrcFactor: wgpu.BlendFactorOne,

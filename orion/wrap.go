@@ -1,7 +1,7 @@
 package orion
 
 import (
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 func CreateShaderModule(descriptor wgpu.ShaderModuleDescriptor) *wgpu.ShaderModule {

@@ -1,7 +1,7 @@
 package orion
 
 import (
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 func CreateBuffer(desc wgpu.BufferDescriptor) *wgpu.Buffer {

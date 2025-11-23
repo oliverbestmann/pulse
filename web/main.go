@@ -9,7 +9,7 @@ import (
 	"syscall/js"
 	"unsafe"
 
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:wasmimport wgpu_native wgpuGetVersion
@@ -19,7 +19,7 @@ func wgpuGetVersion() uint32
 func wgpuSetLogLevel(level wgpu.LogLevel)
 
 //go:wasmimport wgpu_native wgpuSetLogCallback
-func wgpuSetLogCallback(callback uint32, userdata unsafe.Pointer)
+func wgpuSetLogCallback(callback uint32, userdata uintptr)
 
 //go:wasmimport wgpu_native wgpuCreateInstance
 func wgpuCreateInstance(desc unsafe.Pointer) uint32

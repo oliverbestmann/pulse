@@ -3,7 +3,7 @@ package orion
 import (
 	"errors"
 
-	"github.com/cogentcore/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 // ExitApp can be returned from Game.Update to exit the app

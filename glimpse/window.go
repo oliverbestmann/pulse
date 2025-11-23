@@ -1,6 +1,6 @@
 package glimpse
 
-import "github.com/cogentcore/webgpu/wgpu"
+import "github.com/oliverbestmann/webgpu/wgpu"
 
 type Window interface {
 	GetSize() (uint32, uint32)

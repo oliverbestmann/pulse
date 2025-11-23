@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/cogentcore/webgpu/wgpu"
-	"github.com/cogentcore/webgpu/wgpuglfw"
+	"github.com/oliverbestmann/webgpu/wgpu"
+	"github.com/oliverbestmann/webgpu/wgpuglfw"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/pkg/profile"
 )
