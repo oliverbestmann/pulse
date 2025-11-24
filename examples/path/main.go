@@ -30,7 +30,7 @@ func (g Game) Draw(screen *orion.Image) {
 	var path vector.Path
 	path.MoveTo(glm.Vec2f{200, 200})
 	path.LineTo(glm.Vec2f{300, 200})
-	path.QuadCurveTo(glm.Vec2f{300, 400}, glm.Vec2f{250, 400})
+	path.QuadCurveTo(glm.Vec2f{100, 300}, glm.Vec2f{250, 400})
 	path.CubicCurveTo(glm.Vec2f{100, 400}, glm.Vec2f{100, 200}, glm.Vec2f{200, 200})
 
 	vector.FillPath(screen, path, &vector.FillPathOptions{
