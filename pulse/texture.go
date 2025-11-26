@@ -6,8 +6,8 @@ import (
 	"image"
 	"image/draw"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 // Texture wraps a wgpu.Texture and an identity wgpu.TextureView.
@@ -332,7 +332,7 @@ func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
 
 func NewTextureFromImage(ctx *Context, src image.Image) (*Texture, error) {
 	iw, ih := src.Bounds().Dx(), src.Bounds().Dy()
-	rgba := image.NewRGBA(image.Rect(0, 0, iw, ih))
+	rgba := image.NewNRGBA(image.Rect(0, 0, iw, ih))
 
 	draw.Draw(rgba, rgba.Bounds(), src, image.Point{}, draw.Src)
 

@@ -25,6 +25,12 @@ var _ship []byte
 //go:embed player.png
 var _player []byte
 
+//go:embed menu-fg.png
+var _menufg []byte
+
+//go:embed menu-bg.png
+var _menubg []byte
+
 var ColorBlack = orion.Color{0.1, 0.1, 0.2, 1.0}
 var ColorWhite = orion.Color{0.95, 0.90, 0.8, 1.0}
 var ColorAccent = orion.Color{0.7, 0.16, 0.35, 1.0}
@@ -96,6 +102,11 @@ type Game struct {
 	pingTwo   bool
 	shipImage *orion.Image
 
+	started  bool
+	menuFg   *orion.Image
+	menuBg   *orion.Image
+	menuTime float32
+
 	nextBeaconPing float32
 	dead           bool
 	cameraShake    float32
@@ -139,6 +150,8 @@ func (g *Game) Initialize() error {
 	g.lastTime = time.Now()
 
 	g.shipImage, _ = orion.DecodeImageFromBytes(_ship)
+	g.menuFg, _ = orion.DecodeImageFromBytes(_menufg)
+	g.menuBg, _ = orion.DecodeImageFromBytes(_menubg)
 
 	playerImage, _ := orion.DecodeImageFromBytes(_player)
 
@@ -184,6 +197,7 @@ func (g *Game) Initialize() error {
 	})
 
 	g.plNoise = orion.StreamAudio(&noise{})
+	g.plNoise.Pause()
 
 	return nil
 }
@@ -300,11 +314,24 @@ func b2Vecs(vecs []glm.Vec2f) []b2.Vec2 {
 }
 
 func (g *Game) Update() error {
-	dt, stepCount := g.fixedTimeStep()
-
 	if orion.IsKeyJustPressed(glimpse.KeyD) {
 		orion.DebugOverlay.Enable(true)
 	}
+
+	if !g.started {
+		now := time.Now()
+		g.menuTime += float32(now.Sub(g.lastTime).Seconds())
+		g.lastTime = now
+
+		if orion.IsMouseButtonPressed(orion.MouseButton(0)) {
+			g.started = true
+			g.plNoise.Play()
+		}
+
+		return nil
+	}
+
+	dt, stepCount := g.fixedTimeStep()
 
 	for step := range stepCount {
 		firstStep := step == 0
@@ -470,118 +497,135 @@ func (g *Game) pingByBeacon() {
 func (g *Game) Draw(screen *orion.Image) {
 	screen.Clear(ColorBlack)
 
-	g.updateToScreenTransform()
+	if g.started {
+		g.updateToScreenTransform()
 
-	pl := &g.player
+		pl := &g.player
 
-	toScreen := g.toScreen
+		toScreen := g.toScreen
 
-	// draw pings
-	for _, ping := range g.pings {
-		g.drawRing(screen, ping.Origin, ping.Size, ping.Size-ping.Width, ping.Color)
-	}
+		// draw pings
+		for _, ping := range g.pings {
+			g.drawRing(screen, ping.Origin, ping.Size, ping.Size-ping.Width, ping.Color)
+		}
 
-	if pl.LightOn {
-		// draw the players light
-		size := pl.LightSize
+		if pl.LightOn {
+			// draw the players light
+			size := pl.LightSize
 
-		screen.DrawTriangles(g.lightVertices, &orion.DrawTrianglesOptions{
+			screen.DrawTriangles(g.lightVertices, &orion.DrawTrianglesOptions{
+				ColorScale: orion.ColorScaleOf(ColorWhite),
+				Transform:  toScreen.Translate(pl.Position.XY()).Scale(size, size),
+			})
+		}
+
+		// draw particles
+		particleVertices := circleVertices(4)
+		for _, p := range g.particles {
+			if p.Value > 0.5 {
+				continue
+			}
+
+			screen.DrawTriangles(particleVertices, &orion.DrawTrianglesOptions{
+				ColorScale: orion.ColorScaleOf(ColorBlack),
+				Transform:  toScreen.Translate(p.Position.XY()).Scale(4.0, 4.0),
+			})
+		}
+
+		// draw the asteroids
+		for _, a := range g.asteroids {
+			pos := toVec(a.Body.GetPosition())
+			angle := glm.Rad(a.Body.GetRotation().Angle())
+
+			tr := toScreen.Translate(pos.XY()).Rotate(angle)
+
+			screen.DrawTriangles(a.Vertices, &orion.DrawTrianglesOptions{
+				ColorScale: orion.ColorScaleOf(ColorBlack),
+				Transform:  tr,
+			})
+		}
+
+		// draw the ship
+		{
+			unitScale := glm.TranslationMat3[float32](-0.5, -0.5).Scale(g.shipImage.Sizef().Recip().XY())
+
+			angle := glm.Rad(g.elapsedTime * 0.1)
+
+			screen.DrawImage(g.shipImage, &orion.DrawImageOptions{
+				ColorScale: orion.ColorScaleOf(ColorBlack),
+				Transform:  toScreen.Translate(g.beacon.XY()).Scale(128, 128).Rotate(angle).Mul(unitScale),
+			})
+		}
+
+		// draw the target beacon
+		{
+			screen.DrawTriangles(g.beaconVertices, &orion.DrawTrianglesOptions{
+				ColorScale: orion.ColorScaleOf(ColorAccent),
+				Transform:  toScreen.Translate(g.beacon.XY()).Scale(16, 16),
+			})
+		}
+
+		// draw the player
+		if pl.MarkerOn && !g.hitShip {
+			image := g.playerImages[1]
+
+			if !g.dead && pl.Thrusting {
+				image = g.playerImages[0]
+			}
+
+			// scale image to unit size and move the anchor to the center
+			toUnitSize := glm.TranslationMat3[float32](-0.5, -0.5).Scale(1/64.0, 1/64.0)
+
+			// size of the image
+			size := pl.Radius * 3
+
+			screen.DrawImage(image, &orion.DrawImageOptions{
+				ColorScale: orion.ColorScaleOf(ColorAccent),
+				Transform: toScreen.Translate(pl.Position.XY()).
+					Rotate(pl.Rotation).
+					Scale(size*pl.FlipX, size).
+					Mul(toUnitSize),
+			})
+		}
+
+		var text string
+		var color orion.Color
+
+		switch {
+		case g.hitShip:
+			text = "You've made\nit to safety!"
+			color = ColorBlack
+		case g.dead:
+			text = "You're dead,\ntap to try again..."
+			color = ColorWhite
+		default:
+			text = fmt.Sprintf("Oxygen\n%1.2fsec", max(0, g.remainingOxygen))
+			color = ColorWhite
+		}
+
+		pos := pl.Position.Add(glm.Vec2f{-32, 64})
+
+		orion.DebugText(screen, text, &orion.DebugTextOptions{
+			ColorScale:  orion.ColorScaleOf(color),
+			Transform:   toScreen.Translate(pos.XY()).Scale(2.0, 2.0),
+			ShadowColor: orion.Color{0, 0, 0, 0},
+		})
+	} else {
+		w := float32(screen.Width())
+		x := float32(math.Log10(float64(5+g.menuTime))) * 400
+		angle := glm.Rad(math.Log10(float64(5+g.menuTime))) * 0.2
+		scale := glm.ScaleMat3(w/2048.0, w/2048.0)
+
+		screen.DrawImage(g.menuBg, &orion.DrawImageOptions{
 			ColorScale: orion.ColorScaleOf(ColorWhite),
-			Transform:  toScreen.Translate(pl.Position.XY()).Scale(size, size),
+			Transform:  scale.Scale(2, 2).Translate(0, 100),
+		})
+
+		screen.DrawImage(g.menuFg, &orion.DrawImageOptions{
+			ColorScale: orion.ColorScaleOf(ColorWhite),
+			Transform:  scale.Translate(x, 200).Rotate(angle),
 		})
 	}
-
-	// draw particles
-	particleVertices := circleVertices(4)
-	for _, p := range g.particles {
-		if p.Value > 0.5 {
-			continue
-		}
-
-		screen.DrawTriangles(particleVertices, &orion.DrawTrianglesOptions{
-			ColorScale: orion.ColorScaleOf(ColorBlack),
-			Transform:  toScreen.Translate(p.Position.XY()).Scale(4.0, 4.0),
-		})
-	}
-
-	// draw the asteroids
-	for _, a := range g.asteroids {
-		pos := toVec(a.Body.GetPosition())
-		angle := glm.Rad(a.Body.GetRotation().Angle())
-
-		tr := toScreen.Translate(pos.XY()).Rotate(angle)
-
-		screen.DrawTriangles(a.Vertices, &orion.DrawTrianglesOptions{
-			ColorScale: orion.ColorScaleOf(ColorBlack),
-			Transform:  tr,
-		})
-	}
-
-	// draw the ship
-	{
-		unitScale := glm.TranslationMat3[float32](-0.5, -0.5).Scale(g.shipImage.Sizef().Recip().XY())
-
-		angle := glm.Rad(g.elapsedTime * 0.1)
-
-		screen.DrawImage(g.shipImage, &orion.DrawImageOptions{
-			ColorScale: orion.ColorScaleOf(ColorBlack),
-			Transform:  toScreen.Translate(g.beacon.XY()).Scale(128, 128).Rotate(angle).Mul(unitScale),
-		})
-	}
-
-	// draw the target beacon
-	{
-		screen.DrawTriangles(g.beaconVertices, &orion.DrawTrianglesOptions{
-			ColorScale: orion.ColorScaleOf(ColorAccent),
-			Transform:  toScreen.Translate(g.beacon.XY()).Scale(16, 16),
-		})
-	}
-
-	// draw the player
-	if pl.MarkerOn && !g.hitShip {
-		image := g.playerImages[1]
-
-		if !g.dead && pl.Thrusting {
-			image = g.playerImages[0]
-		}
-
-		// scale image to unit size and move the anchor to the center
-		toUnitSize := glm.TranslationMat3[float32](-0.5, -0.5).Scale(1/64.0, 1/64.0)
-
-		// size of the image
-		size := pl.Radius * 3
-
-		screen.DrawImage(image, &orion.DrawImageOptions{
-			ColorScale: orion.ColorScaleOf(ColorAccent),
-			Transform: toScreen.Translate(pl.Position.XY()).
-				Rotate(pl.Rotation).
-				Scale(size*pl.FlipX, size).
-				Mul(toUnitSize),
-		})
-	}
-
-	var text string
-	var color orion.Color
-
-	switch {
-	case g.hitShip:
-		text = "You've made\nit to safety!"
-		color = ColorBlack
-	case g.dead:
-		text = "You're dead,\ntap to try again..."
-		color = ColorWhite
-	default:
-		text = fmt.Sprintf("Oxygen\n%1.2fsec", max(0, g.remainingOxygen))
-		color = ColorWhite
-	}
-
-	pos := pl.Position.Add(glm.Vec2f{-32, 64})
-
-	orion.DebugText(screen, text, &orion.DebugTextOptions{
-		ColorScale:  orion.ColorScaleOf(color),
-		Transform:   toScreen.Translate(pos.XY()).Scale(2.0, 2.0),
-		ShadowColor: orion.Color{0, 0, 0, 0},
-	})
 
 	// draw debug overlay if enabled
 	orion.DebugOverlay.Draw(screen)
