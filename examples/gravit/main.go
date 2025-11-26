@@ -11,12 +11,12 @@ import (
 
 	_ "image/png"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/furui/fastnoiselite-go"
 	b2 "github.com/oliverbestmann/box2d-go"
 	"github.com/oliverbestmann/go3d/glimpse"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/orion"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:embed ship.png
@@ -103,10 +103,36 @@ type Game struct {
 	noise        *fastnoiselite.FastNoiseLite
 	playerImages []*orion.Image
 	hitShip      bool
+
+	plNoise orion.AudioPlayer
 }
 
 func (g *Game) DrawToSurface(surface, offscreen *orion.Image) {
 	orion.DefaultDrawToSurface(surface, offscreen, wgpu.FilterModeNearest)
+}
+
+type noise struct {
+	offset int
+}
+
+func (no *noise) Read(samples []orion.StereoSample) (n int64, err error) {
+	for idx := range samples {
+		now := float64(no.offset) / orion.StereoSamplesPerSecond
+
+		t1 := float64(no.offset) / orion.StereoSamplesPerSecond * 440
+		t2 := float64(no.offset) / orion.StereoSamplesPerSecond * (440 + now)
+
+		sample := float32(math.Sin(t1) + math.Sin(t2)*0.5)
+
+		samples[idx] = orion.StereoSample{
+			sample,
+			sample,
+		}
+
+		no.offset += 1
+	}
+
+	return int64(len(samples)), nil
 }
 
 func (g *Game) Initialize() error {
@@ -156,6 +182,8 @@ func (g *Game) Initialize() error {
 	body.CreateCircleShape(shape, b2.Circle{
 		Radius: 32.0,
 	})
+
+	g.plNoise = orion.StreamAudio(&noise{})
 
 	return nil
 }
@@ -368,6 +396,7 @@ func (g *Game) Update() error {
 
 		if rem := g.remainingOxygen; rem < 0 {
 			g.dead = true
+			g.plNoise.Pause()
 
 			// flicker off
 			g.player.LightOn = rem > -1 && g.sampleNoise(g.elapsedTime, 0) > 0
@@ -398,6 +427,7 @@ func (g *Game) Update() error {
 				}
 
 				g.hitShip = true
+				g.plNoise.Pause()
 			}
 		}
 

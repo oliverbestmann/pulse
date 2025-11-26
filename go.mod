@@ -15,6 +15,8 @@ require (
 )
 
 require (
+	github.com/ebitengine/oto/v3 v3.4.0 // indirect
+	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/google/pprof v0.0.0-20251114195745-4902fdda35c8 // indirect
 	github.com/hajimehoshi/wasmserve v1.2.1 // indirect
@@ -23,9 +25,9 @@ require (
 	github.com/oliverbestmann/webgpu/libs-ios v0.0.0-20251123130710-78131685b429 // indirect
 	github.com/oliverbestmann/webgpu/libs-linux v0.0.0-20251123130508-41a15cd9f5d4 // indirect
 	github.com/oliverbestmann/webgpu/libs-windows v0.0.0-20251123134324-0b4e31ddbbf9 // indirect
-	github.com/oliverbestmann/webgpu/linux/v27 v27.0.0-20251122195149-6cd76f480ae1 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
 )
 
