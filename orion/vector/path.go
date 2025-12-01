@@ -77,12 +77,12 @@ func (p *Path) Contour(unitScale float32) []glm.Vec2f {
 			points = append(points, op.End)
 
 		case opQuadCurve:
-			const segments = 16
+			// const segments = 16
 			// points = appendQuadCurve(points, curr, op.Control[0], op.End, segments)
 			adaptiveQuadCurve(curr, op.Control[0], op.End, unitScale, &points)
 
 		case opCubicCurve:
-			const segments = 16
+			// const segments = 16
 			// points = appendCubicCurve(points, curr, op.Control[0], op.Control[1], op.End, segments)
 			adaptiveCubicCurve(curr, op.Control[0], op.Control[1], op.End, unitScale, &points)
 
@@ -93,6 +93,25 @@ func (p *Path) Contour(unitScale float32) []glm.Vec2f {
 		}
 
 		curr = op.End
+	}
+
+	if len(points) > 0 {
+		// cleanup duplicate points
+		pointsClean := points[:1]
+
+		prev := points[0]
+		for _, point := range points[1:] {
+			if prev == point {
+				// skip this point
+				continue
+			}
+
+			// distinct point, keep this one
+			pointsClean = append(pointsClean, point)
+			prev = point
+		}
+
+		points = pointsClean
 	}
 
 	return points

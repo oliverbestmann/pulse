@@ -17,9 +17,11 @@ type FillPathOptions struct {
 }
 
 func FillPath(target *orion.Image, path Path, opts *FillPathOptions) {
-	a := opts.Transform.Transform2(glm.Vec2f{1, 0})
-	b := opts.Transform.Transform2(glm.Vec2f{0, 0})
-	unitScale := max(0.1, 1.0/a.Sub(b).Length())
+	if opts == nil {
+		opts = &FillPathOptions{}
+	}
+
+	unitScale := calculateUnitScale(opts.Transform)
 
 	points := earcutPointsOf(path.Contour(unitScale))
 	points, indices := earcut.Triangulate(points, nil)
@@ -49,6 +51,40 @@ func FillPath(target *orion.Image, path Path, opts *FillPathOptions) {
 		BlendState: opts.BlendState,
 		Shader:     opts.Shader,
 	})
+}
+
+func calculateUnitScale(transform glm.Mat3f) float32 {
+	a := transform.Transform2(glm.Vec2f{1, 0})
+	b := transform.Transform2(glm.Vec2f{0, 0})
+	return max(0.1, 0.5/a.Sub(b).Length())
+}
+
+type StrokePathOptions struct {
+	Transform  glm.Mat3f
+	ColorScale orion.ColorScale
+	BlendState wgpu.BlendState
+	Thickness  float32
+}
+
+var drawLines *drawLinesCommand
+
+func StrokePath(target *orion.Image, path Path, opts *StrokePathOptions) {
+	if opts == nil {
+		opts = &StrokePathOptions{}
+	}
+
+	unitScale := calculateUnitScale(opts.Transform)
+	points := path.Contour(unitScale)
+
+	if drawLines == nil {
+		drawLines = &drawLinesCommand{}
+		drawLines.Init()
+	}
+
+	orion.SwitchToCommand(drawLines)
+
+	err := drawLines.Draw(target.Texture(), points, *opts)
+	orion.Handle(err, "stroke path")
 }
 
 func toVec(point earcut.Point[float32]) glm.Vec2f {

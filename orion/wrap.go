@@ -13,6 +13,15 @@ func CreateShaderModule(descriptor wgpu.ShaderModuleDescriptor) *wgpu.ShaderModu
 	return res
 }
 
+func CreateRenderPipeline(descriptor wgpu.RenderPipelineDescriptor) *wgpu.RenderPipeline {
+	ctx := CurrentContext()
+
+	res, err := ctx.CreateRenderPipeline(&descriptor)
+	Handle(err, "create render pipeline")
+
+	return res
+}
+
 func CreateComputePipeline(descriptor wgpu.ComputePipelineDescriptor) *wgpu.ComputePipeline {
 	ctx := CurrentContext()
 

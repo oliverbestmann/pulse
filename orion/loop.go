@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glimpse"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type LoopState struct {
@@ -47,7 +47,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 		withDefaults(surfaceWidth, surfaceHeight)
 
 	// request a new surface if needed
-	if !layoutIsCompatible(layout, loopState.Canvas) {
+	if !layoutIsCompatible(viewState.Context, layout, loopState.Canvas) {
 		if loopState.Canvas != nil {
 			loopState.Canvas.Texture().Release()
 			loopState.Canvas = nil
@@ -168,12 +168,14 @@ func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Im
 	return nil
 }
 
-func layoutIsCompatible(layout LayoutOptions, canvas *Image) bool {
+func layoutIsCompatible(ctx *pulse.Context, layout LayoutOptions, canvas *Image) bool {
+	isOpenGL := ctx.Adapter.GetInfo().BackendType == wgpu.BackendTypeOpenGL
+
 	return canvas != nil &&
 		canvas.Width() == layout.Width &&
 		canvas.Height() == layout.Height &&
 		canvas.Format() == layout.Format &&
-		canvas.MSAA() == layout.MSAA
+		(canvas.MSAA() == layout.MSAA || isOpenGL)
 }
 
 func DefaultScreenTransform(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32] {

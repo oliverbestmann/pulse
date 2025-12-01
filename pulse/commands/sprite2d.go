@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"unsafe"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:embed sprite2d.wgsl
