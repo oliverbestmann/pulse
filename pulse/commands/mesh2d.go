@@ -7,9 +7,9 @@ import (
 	"structs"
 	"unsafe"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:embed mesh2d.wgsl
@@ -42,17 +42,13 @@ type Mesh2dCommand struct {
 	batchConfig mesh2dBatchConfig
 }
 
-func NewMesh2dCommand(ctx *pulse.Context) (*Mesh2dCommand, error) {
+func NewMesh2dCommand(ctx *pulse.Context) *Mesh2dCommand {
 	// create a vertex buffer
-	buvVertices, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+	buvVertices := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",
 		Usage: wgpu.BufferUsageVertex | wgpu.BufferUsageCopyDst,
 		Size:  uint64(unsafe.Sizeof(MeshVertex{})) * maxMeshVertices,
 	})
-
-	if err != nil {
-		return nil, fmt.Errorf("create vertex buffer: %w", err)
-	}
 
 	p := &Mesh2dCommand{
 		ctx:         ctx,
@@ -61,7 +57,7 @@ func NewMesh2dCommand(ctx *pulse.Context) (*Mesh2dCommand, error) {
 
 	p.pipelineCache = pulse.NewPipelineCache[mesh2dRenderPipeline](ctx)
 
-	return p, nil
+	return p
 }
 
 type DrawMesh2dOptions struct {
@@ -74,7 +70,7 @@ type DrawMesh2dOptions struct {
 	Shader string
 }
 
-func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOptions) error {
+func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOptions) {
 	if opts.Shader == "" {
 		opts.Shader = mesh2dShaderCode
 	}
@@ -97,10 +93,7 @@ func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOpti
 			len(p.vertices)+3 > maxMeshVertices
 
 		if requireFlush {
-			if err := p.Flush(); err != nil {
-				return fmt.Errorf("flush: %w", err)
-			}
-
+			p.Flush()
 			p.batchConfig = batchConfig
 		}
 
@@ -111,20 +104,20 @@ func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOpti
 			})
 		}
 	}
-
-	return nil
 }
 
-func (p *Mesh2dCommand) Flush() error {
+func (p *Mesh2dCommand) Flush() {
 	defer p.reset()
 
 	if len(p.vertices) == 0 {
-		return nil
+		return
 	}
 
 	batchConfig := p.batchConfig
 
 	slog.Debug("Rendering triangles", slog.Int("vertexCount", len(p.vertices)))
+
+	p.ctx.WriteBuffer(p.buvVertices, 0, wgpu.ToBytes(p.vertices))
 
 	pipelineConfig := mesh2dRenderPipeline{
 		TargetFormat:      batchConfig.target.Format(),
@@ -133,20 +126,9 @@ func (p *Mesh2dCommand) Flush() error {
 		ShaderSource:      batchConfig.shader,
 	}
 
-	pc, err := p.pipelineCache.Get(pipelineConfig)
-	if err != nil {
-		return fmt.Errorf("get new pipeline: %w", err)
-	}
+	pc := p.pipelineCache.Get(pipelineConfig)
 
-	err = p.ctx.WriteBuffer(p.buvVertices, 0, wgpu.ToBytes(p.vertices))
-	if err != nil {
-		return fmt.Errorf("update instance buffer: %w", err)
-	}
-
-	encoder, err := p.ctx.CreateCommandEncoder(nil)
-	if err != nil {
-		return err
-	}
+	encoder := p.ctx.CreateCommandEncoder(nil)
 	defer encoder.Release()
 
 	view, resolveTarget := batchConfig.target.RenderViews()
@@ -163,12 +145,6 @@ func (p *Mesh2dCommand) Flush() error {
 		},
 	})
 
-	defer func() {
-		if pass != nil {
-			pass.Release()
-		}
-	}()
-
 	// set target region as clip rect
 	sx, sy := batchConfig.target.Offset().XY()
 	sw, sh := batchConfig.target.Size().XY()
@@ -177,25 +153,12 @@ func (p *Mesh2dCommand) Flush() error {
 	pass.SetScissorRect(sx, sy, sw, sh)
 	pass.SetVertexBuffer(0, p.buvVertices, 0, wgpu.WholeSize)
 	pass.Draw(uint32(len(p.vertices)), 1, 0, 0)
+	pass.End()
 
-	if err := pass.End(); err != nil {
-		return err
-	}
-
-	// must release pass before finishing the encoder
-	pass.Release()
-	pass = nil
-
-	cmdBuffer, err := encoder.Finish(nil)
-	if err != nil {
-		return err
-	}
-
+	cmdBuffer := encoder.Finish(nil)
 	defer cmdBuffer.Release()
 
 	p.ctx.Submit(cmdBuffer)
-
-	return nil
 }
 
 type mesh2dRenderPipeline struct {
@@ -205,20 +168,17 @@ type mesh2dRenderPipeline struct {
 	ShaderSource      string
 }
 
-func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) (*wgpu.RenderPipeline, error) {
+func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) *wgpu.RenderPipeline {
 	slog.Info(
 		"Create RenderPipeline for mesh2d",
 		slog.Any("config", conf.TargetFormat),
 		slog.Any("sampleCount", conf.TargetSampleCount),
 	)
 
-	shader, err := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
+	shader := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
 		Label:      "Mesh2D.ShaderSource",
 		WGSLSource: &wgpu.ShaderSourceWGSL{Code: conf.ShaderSource},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("compile sprite shader: %w", err)
-	}
 
 	defer shader.Release()
 
@@ -272,12 +232,7 @@ func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 		},
 	}
 
-	pipeline, err := dev.CreateRenderPipeline(desc)
-	if err != nil {
-		return nil, fmt.Errorf("build mesh2d pipeline: %w", err)
-	}
-
-	return pipeline, nil
+	return dev.CreateRenderPipeline(desc)
 }
 
 func (p *Mesh2dCommand) reset() {

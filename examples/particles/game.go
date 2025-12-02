@@ -8,9 +8,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/orion"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:embed gopher.jpg
@@ -194,6 +194,8 @@ func NewParticleCommand(particlesIn []Particle) *ParticleCommand {
 		panic("gpu particle has wrong size")
 	}
 
+	dev := orion.CurrentContext()
+
 	var particles []gpuParticle
 	for _, particle := range particlesIn {
 		particles = append(particles, gpuParticle{
@@ -203,34 +205,34 @@ func NewParticleCommand(particlesIn []Particle) *ParticleCommand {
 		})
 	}
 
-	bufParticlesGPU := orion.CreateBuffer(wgpu.BufferDescriptor{
+	bufParticlesGPU := dev.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Particles.GPU",
 		Size:  uint64(len(wgpu.ToBytes(particles))),
 		Usage: wgpu.BufferUsageStorage | wgpu.BufferUsageCopyDst | wgpu.BufferUsageCopySrc,
 	})
 
 	// staging buffer buffer
-	bufParticlesSprites := orion.CreateBuffer(wgpu.BufferDescriptor{
+	bufParticlesSprites := dev.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Particles.Sprites",
 		Size:  uint64((4 + 2 + 2 + 3 + 3) * 4 * len(particles)),
 		Usage: wgpu.BufferUsageStorage | wgpu.BufferUsageVertex,
 	})
 
 	// delta time buffer
-	bufTime := orion.CreateBufferInit(wgpu.BufferInitDescriptor{
+	bufTime := dev.CreateBufferInit(&wgpu.BufferInitDescriptor{
 		Label:    "DeltaTime",
 		Contents: wgpu.ToBytes([]float32{float32(0)}),
 		Usage:    wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
 	})
 
 	// build the pipeline
-	shader := orion.CreateShaderModule(wgpu.ShaderModuleDescriptor{
+	shader := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
 		Label:      "ParticlesComputeShader",
 		WGSLSource: &wgpu.ShaderSourceWGSL{Code: particlesShader},
 	})
 
 	// create the pipeline
-	pipeline := orion.CreateComputePipeline(wgpu.ComputePipelineDescriptor{
+	pipeline := dev.CreateComputePipeline(&wgpu.ComputePipelineDescriptor{
 		Compute: wgpu.ProgrammableStageDescriptor{
 			Module:     shader,
 			EntryPoint: "update_particles",
@@ -242,7 +244,7 @@ func NewParticleCommand(particlesIn []Particle) *ParticleCommand {
 	defer bindGroupLayout.Release()
 
 	// create the bind group
-	bindGroup := orion.CreateBindGroup(wgpu.BindGroupDescriptor{
+	bindGroup := dev.CreateBindGroup(&wgpu.BindGroupDescriptor{
 		Label:  "ParticleBindGroup",
 		Layout: bindGroupLayout,
 		Entries: []wgpu.BindGroupEntry{
@@ -265,7 +267,7 @@ func NewParticleCommand(particlesIn []Particle) *ParticleCommand {
 	})
 
 	// copy data to the gpu
-	orion.WriteToBuffer(bufParticlesGPU, wgpu.ToBytes(particles))
+	orion.WriteSliceToBuffer(bufParticlesGPU, wgpu.ToBytes(particles))
 
 	return &ParticleCommand{
 		particles:           particles,
@@ -278,20 +280,22 @@ func NewParticleCommand(particlesIn []Particle) *ParticleCommand {
 }
 
 func (p *ParticleCommand) Execute(dt float32) {
-	orion.WriteToBuffer(p.bufTime, wgpu.ToBytes([]float32{dt}))
+	orion.WriteValueToBuffer(p.bufTime, dt)
 
 	count := uint32(len(p.particles))
 	xSize := count / 64
 	ySize := uint32(64)
 
-	encoder := orion.CreateCommandEncoder("UpdateParticles")
+	dev := orion.CurrentContext()
 
-	encoder.AddComputePass(func(pass *wgpu.ComputePassEncoder) {
-		pass.SetPipeline(p.pipeline)
-		pass.SetBindGroup(0, p.bindGroup, nil)
-		pass.DispatchWorkgroups(xSize, ySize, 1)
-	})
+	encoder := dev.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{Label: "UpdateParticlesEnc"})
+
+	pass := encoder.BeginComputePass(&wgpu.ComputePassDescriptor{Label: "UpdateParticles"})
+	pass.SetPipeline(p.pipeline)
+	pass.SetBindGroup(0, p.bindGroup, nil)
+	pass.DispatchWorkgroups(xSize, ySize, 1)
+	pass.End()
 
 	// submit commands to queue
-	orion.Submit(encoder.Finish())
+	dev.Submit(encoder.Finish(nil))
 }

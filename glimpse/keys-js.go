@@ -56,7 +56,7 @@ var jsToKey = map[string]Key{
 	"Digit7":         KeyDigit7,
 	"Digit8":         KeyDigit8,
 	"Digit9":         KeyDigit9,
-	"End":            KeyEnd,
+	"TryEnd":         KeyEnd,
 	"Enter":          KeyEnter,
 	"Equal":          KeyEqual,
 	"Escape":         KeyEscape,

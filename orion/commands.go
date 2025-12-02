@@ -8,27 +8,23 @@ import (
 var clearCommand global[*commands.ClearCommand]
 var spriteCommand global[*commands.SpriteCommand]
 var mesh2dCommand global[*commands.Mesh2dCommand]
-var textCommand global[*commands.TextCommand]
+var textCommand global[*commands.DebugTextCommand]
 
 func initializeCommands(ctx *pulse.Context) {
-
-	sprite, err := commands.NewSpriteCommand(ctx)
-	Handle(err, "initialize sprite command")
+	sprite := commands.NewSpriteCommand(ctx)
 	spriteCommand.set(sprite)
 
 	clearCommand.set(commands.NewClear(ctx, sprite))
 
-	mesh2d, err := commands.NewMesh2dCommand(ctx)
-	Handle(err, "initialize mesh2d command")
+	mesh2d := commands.NewMesh2dCommand(ctx)
 	mesh2dCommand.set(mesh2d)
 
-	text, err := commands.NewTextCommand(ctx, sprite)
-	Handle(err, "initialize text command")
+	text := commands.NewDebugTextCommand(ctx, sprite)
 	textCommand.set(text)
 }
 
 type Command interface {
-	Flush() error
+	Flush()
 }
 
 var currentCommand Command
@@ -47,7 +43,6 @@ func flushCurrentCommand() {
 	if currentCommand != nil {
 		defer func() { currentCommand = nil }()
 
-		err := currentCommand.Flush()
-		Handle(err, "flush pending commands")
+		currentCommand.Flush()
 	}
 }

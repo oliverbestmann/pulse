@@ -69,10 +69,7 @@ func RunGame(opts RunGameOptions) error {
 	}
 
 	// initialize the view
-	view, err := pulse.NewView(ctx, false, false)
-	if err != nil {
-		return fmt.Errorf("create view: %w", err)
-	}
+	view := pulse.NewView(ctx, false, false)
 
 	defer view.Release()
 

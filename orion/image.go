@@ -3,10 +3,10 @@ package orion
 import (
 	"fmt"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
 	"github.com/oliverbestmann/go3d/pulse/commands"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type Color = glm.Vec4f
@@ -53,8 +53,7 @@ func (i *Image) Clear(color Color) {
 	clr := clearCommand.Get()
 	SwitchToCommand(clr)
 
-	err := clr.Clear(i.texture, color)
-	Handle(err, "clear image")
+	clr.Clear(i.texture, color)
 }
 
 type DrawImageOptions struct {
@@ -90,7 +89,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.Draw(i.texture, source.texture, commands.DrawSpriteOptions{
+	sprites.Draw(i.texture, source.texture, commands.DrawSpriteOptions{
 		Transform:    opts.Transform,
 		Color:        opts.ColorScale.ToColor(),
 		FilterMode:   filterMode,
@@ -98,8 +97,6 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 		AddressModeU: wgpu.AddressModeClampToEdge,
 		AddressModeV: wgpu.AddressModeClampToEdge,
 	})
-
-	Handle(err, "draw image")
 }
 
 func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount uint, opts *DrawImageOptions) {
@@ -120,7 +117,7 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 	sprites := spriteCommand.Get()
 	SwitchToCommand(sprites)
 
-	err := sprites.DrawFromGPU(i.texture, source.texture, commands.DrawSpriteFromGPUOptions{
+	sprites.DrawFromGPU(i.texture, source.texture, commands.DrawSpriteFromGPUOptions{
 		Buffer:        buf,
 		InstanceCount: particleCount,
 		FilterMode:    filterMode,
@@ -128,8 +125,6 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 		AddressModeU:  wgpu.AddressModeClampToEdge,
 		AddressModeV:  wgpu.AddressModeClampToEdge,
 	})
-
-	Handle(err, "draw image from gpu buffer")
 }
 
 type Vertex2d struct {
@@ -171,14 +166,12 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 		}
 	}
 
-	err := mesh.DrawTriangles(i.texture, commands.DrawMesh2dOptions{
+	mesh.DrawTriangles(i.texture, commands.DrawMesh2dOptions{
 		Transform:  opts.Transform,
 		BlendState: blendState,
 		Vertices:   transformed,
 		Shader:     opts.Shader,
 	})
-
-	Handle(err, "draw triangles")
 }
 
 func (i *Image) Sizef() glm.Vec2f {
@@ -212,9 +205,7 @@ func (i *Image) SubImage(x, y, width, height uint32) *Image {
 }
 
 func (i *Image) WritePixels(pixels []byte) {
-	ctx := CurrentContext()
-	err := i.texture.WritePixels(ctx, pixels)
-	Handle(err, "upload pixel data to image")
+	i.texture.WritePixels(CurrentContext(), pixels)
 }
 
 func (i *Image) Texture() *pulse.Texture {
@@ -252,15 +243,13 @@ func NewImage(width, height uint32, opts *NewImageOptions) *Image {
 		opts.Format = wgpu.TextureFormatRGBA8Unorm
 	}
 
-	texture, err := pulse.NewTexture(currentContext.Get(), pulse.NewTextureOptions{
+	texture := pulse.NewTexture(currentContext.Get(), pulse.NewTextureOptions{
 		Width:  width,
 		Height: height,
 		Format: opts.Format,
 		MSAA:   opts.MSAA,
 		Label:  opts.Label,
 	})
-
-	Handle(err, "create new texture")
 
 	return asImage(texture)
 }

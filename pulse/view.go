@@ -1,7 +1,7 @@
 package pulse
 
 import (
-	"fmt"
+	"log/slog"
 
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
@@ -24,15 +24,8 @@ type View struct {
 	depth bool
 }
 
-func NewView(dev *Context, msaa bool, depth bool) (st *View, err error) {
-	defer func() {
-		if err != nil && st != nil {
-			st.Release()
-			st = nil
-		}
-	}()
-
-	st = &View{Context: dev, depth: depth}
+func NewView(dev *Context, msaa bool, depth bool) *View {
+	st := &View{Context: dev, depth: depth}
 
 	if msaa {
 		st.sampleCount = 4
@@ -42,7 +35,7 @@ func NewView(dev *Context, msaa bool, depth bool) (st *View, err error) {
 
 	// Print the available render formats
 	caps := dev.Surface.GetCapabilities(dev.Adapter)
-	fmt.Println("Available surface formats", caps.Formats)
+	slog.Info("Available surface formats", slog.Any("formats", caps.Formats))
 
 	st.surfaceConfig = &wgpu.SurfaceConfiguration{
 		Usage:       wgpu.TextureUsageRenderAttachment,
@@ -54,7 +47,7 @@ func NewView(dev *Context, msaa bool, depth bool) (st *View, err error) {
 		DesiredMaximumFrameLatency: 1,
 	}
 
-	return st, nil
+	return st
 }
 
 func (vs *View) MSAA() bool {
@@ -92,36 +85,26 @@ func (vs *View) ReleaseTexture() {
 	}
 }
 
-func (vs *View) Configure(width, height uint32) error {
+func (vs *View) Configure(width, height uint32) {
 	vs.surfaceConfig.Width = width
 	vs.surfaceConfig.Height = height
 	vs.Surface.Configure(vs.Device, vs.surfaceConfig)
-
-	var err error
 
 	// release depth depth texture
 	vs.ReleaseTexture()
 
 	// create depth texture
 	if vs.depth {
-		vs.depthTexture, err = createDepthTexture(vs.Context, width, height, vs.sampleCount)
-		if err != nil {
-			return err
-		}
+		vs.depthTexture = createDepthTexture(vs.Context, width, height, vs.sampleCount)
 	}
 
 	if vs.MSAA() {
 		// create msaa render target texture
-		vs.msaaTexture, err = createMultisampleTexture(vs.Context, vs.surfaceConfig, vs.sampleCount)
-		if err != nil {
-			return err
-		}
+		vs.msaaTexture = createMultisampleTexture(vs.Context, vs.surfaceConfig, vs.sampleCount)
 	}
-
-	return nil
 }
 
-func createMultisampleTexture(ctx *Context, surfaceConfig *wgpu.SurfaceConfiguration, sampleCount uint32) (*Texture, error) {
+func createMultisampleTexture(ctx *Context, surfaceConfig *wgpu.SurfaceConfiguration, sampleCount uint32) *Texture {
 	return NewTextureFromDesc(ctx, &wgpu.TextureDescriptor{
 		Label: "MultisampleRenderTarget",
 		Usage: wgpu.TextureUsageRenderAttachment,
@@ -137,7 +120,7 @@ func createMultisampleTexture(ctx *Context, surfaceConfig *wgpu.SurfaceConfigura
 	})
 }
 
-func createDepthTexture(ctx *Context, width, height, sampleCount uint32) (*Texture, error) {
+func createDepthTexture(ctx *Context, width, height, sampleCount uint32) *Texture {
 	return NewTextureFromDesc(ctx, &wgpu.TextureDescriptor{
 		Label:     "DepthTexture",
 		Usage:     wgpu.TextureUsageRenderAttachment | wgpu.TextureUsageTextureBinding,

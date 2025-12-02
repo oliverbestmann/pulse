@@ -2,33 +2,32 @@ package commands
 
 import (
 	_ "embed"
-	"fmt"
-
 	_ "image/png"
 
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 //go:embed font.png
-var _font_png []byte
+var _fontpng []byte
 
-type TextCommand struct {
+type DebugTextCommand struct {
 	texture *pulse.Texture
 	sprites *SpriteCommand
 }
 
-func NewTextCommand(ctx *pulse.Context, sprites *SpriteCommand) (*TextCommand, error) {
-	texture, err := pulse.DecodeTextureFromMemory(ctx, _font_png)
+func NewDebugTextCommand(ctx *pulse.Context, sprites *SpriteCommand) *DebugTextCommand {
+	texture, err := pulse.DecodeTextureFromMemory(ctx, _fontpng)
 	if err != nil {
-		return nil, fmt.Errorf("load font texture: %w", err)
+		// not supposed to happen
+		panic(err)
 	}
 
-	return &TextCommand{texture, sprites}, nil
+	return &DebugTextCommand{texture, sprites}
 }
 
-type DrawTextOptions struct {
+type DrawDebugTextOptions struct {
 	Text        string
 	Transform   glm.Mat3f
 	TextColor   pulse.Color
@@ -36,7 +35,7 @@ type DrawTextOptions struct {
 	TabWidth    uint
 }
 
-func (t *TextCommand) DrawText(dest *pulse.Texture, opts DrawTextOptions) error {
+func (t *DebugTextCommand) DrawText(dest *pulse.Texture, opts DrawDebugTextOptions) {
 	spriteOpts := DrawSpriteOptions{
 		Color:        opts.TextColor,
 		FilterMode:   wgpu.FilterModeNearest,
@@ -87,27 +86,21 @@ func (t *TextCommand) DrawText(dest *pulse.Texture, opts DrawTextOptions) error 
 			// draw shadow
 			spriteOpts.Color = opts.ShadowColor
 			spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
-			if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
-				return fmt.Errorf("draw character %q: %w", ch, err)
-			}
+			t.sprites.Draw(dest, charTexture, spriteOpts)
 		}
 
 		// draw the actual text
 		spriteOpts.Color = pulse.Color{1, 1, 1, 1}.Mul(opts.TextColor)
 		spriteOpts.Transform = opts.Transform.Mul(charTransform)
-		if err := t.sprites.Draw(dest, charTexture, spriteOpts); err != nil {
-			return fmt.Errorf("draw character %q: %w", ch, err)
-		}
+		t.sprites.Draw(dest, charTexture, spriteOpts)
 
 		// advance position by one char
 		pos[0] += 1
 	}
-
-	return nil
 }
 
-func (t *TextCommand) Flush() error {
-	return t.sprites.Flush()
+func (t *DebugTextCommand) Flush() {
+	t.sprites.Flush()
 }
 
 var chars = map[rune]glm.Vec2[uint32]{

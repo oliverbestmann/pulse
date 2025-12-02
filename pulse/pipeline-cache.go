@@ -1,10 +1,8 @@
 package pulse
 
 import (
-	"fmt"
-
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/hashicorp/golang-lru/v2"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type CachedPipeline struct {
@@ -29,7 +27,7 @@ type PipelineConfig interface {
 
 	// Specialize creates a specialized pipeline for the
 	// current PipelineConfig
-	Specialize(def *wgpu.Device) (*wgpu.RenderPipeline, error)
+	Specialize(def *wgpu.Device) *wgpu.RenderPipeline
 }
 
 type PipelineCache[C PipelineConfig] struct {
@@ -46,23 +44,20 @@ func NewPipelineCache[C PipelineConfig](ctx *Context) *PipelineCache[C] {
 	}
 }
 
-func (p *PipelineCache[C]) Get(conf C) (CachedPipeline, error) {
+func (p *PipelineCache[C]) Get(conf C) CachedPipeline {
 	cached, ok := p.cache.Get(conf)
 	if ok {
-		return cached, nil
+		return cached
 	}
 
-	pipeline, err := conf.Specialize(p.device)
-	if err != nil {
-		return CachedPipeline{}, fmt.Errorf("build pipeline: %w", err)
-	}
+	pipeline := conf.Specialize(p.device)
 
 	bindGroupsCache, _ := lru.NewWithEvict[uint32, *wgpu.BindGroupLayout](16, releaseBindGroupLayoutOnEviction)
 
 	pc := CachedPipeline{Pipeline: pipeline, bindGroups: bindGroupsCache}
 	p.cache.Add(conf, pc)
 
-	return pc, nil
+	return pc
 }
 
 func releasePipelineOnEviction[C any](_config C, pipe CachedPipeline) {

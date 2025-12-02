@@ -1,13 +1,13 @@
 package commands
 
 import (
-	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/go3d/glm"
 	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type ClearCommand struct {
-	device        *wgpu.Device
+	context       *pulse.Context
 	spriteCommand *SpriteCommand
 
 	whiteTexture      *pulse.Texture
@@ -15,33 +15,32 @@ type ClearCommand struct {
 }
 
 func NewClear(ctx *pulse.Context, spriteCommand *SpriteCommand) *ClearCommand {
+	// allocate a small texture to use for clearing a sub rect of a texture
+	// by simply biting the texture into the rect
 	// TODO find a better solution, maybe a simpler render pipeline?
-	whiteTexture, _ := pulse.NewTexture(ctx, pulse.NewTextureOptions{
+	whiteTexture := pulse.NewTexture(ctx, pulse.NewTextureOptions{
 		Label:  "White",
 		Format: wgpu.TextureFormatRGBA8Unorm,
 		Width:  1,
 		Height: 1,
 	})
 
-	return &ClearCommand{device: ctx.Device, spriteCommand: spriteCommand, whiteTexture: whiteTexture}
+	return &ClearCommand{
+		context:       ctx,
+		spriteCommand: spriteCommand,
+		whiteTexture:  whiteTexture,
+	}
 }
 
-func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) error {
-	enc, err := c.device.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{
-		Label: "ClearTexture",
-	})
-
-	if err != nil {
-		return err
-	}
-
+func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) {
+	enc := c.context.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{Label: "ClearTexture"})
 	defer enc.Release()
 
 	view, resolveView := target.RenderViews()
 
 	if target == target.Root() {
 		desc := &wgpu.RenderPassDescriptor{
-			Label: "ClearTexture",
+			Label: "ClearUsingTexture",
 			ColorAttachments: []wgpu.RenderPassColorAttachment{
 				{
 					View:          view,
@@ -58,48 +57,24 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) error {
 			},
 		}
 
-		pass := enc.BeginRenderPass(desc)
-
-		defer func() {
-			if pass != nil {
-				pass.Release()
-			}
-		}()
-
-		if err := pass.End(); err != nil {
-			return err
-		}
-
-		pass.Release()
-		pass = nil
+		enc.BeginRenderPass(desc).End()
 
 		// encode into a command buffer
-		buf, err := enc.Finish(&wgpu.CommandBufferDescriptor{Label: "ClearTexture"})
-		if err != nil {
-			return err
-		}
-
+		buf := enc.Finish(&wgpu.CommandBufferDescriptor{Label: "ClearTexture"})
 		defer buf.Release()
 
-		queue := c.device.GetQueue()
-		defer queue.Release()
-
-		queue.Submit(buf)
-
-		return nil
+		c.context.Submit(buf)
 	} else {
 		if !c.whiteTextureClear {
+			// clear the white texture once
 			c.whiteTextureClear = true
-
-			if err := c.Clear(c.whiteTexture, pulse.ColorWhite); err != nil {
-				return err
-			}
+			c.Clear(c.whiteTexture, pulse.ColorWhite)
 		}
 
 		tw, th := target.Size().ToVec2f().XY()
 
 		// draw a color square
-		return c.spriteCommand.Draw(target, c.whiteTexture, DrawSpriteOptions{
+		c.spriteCommand.Draw(target, c.whiteTexture, DrawSpriteOptions{
 			Transform:    glm.ScaleMat3(tw, th),
 			Color:        color,
 			FilterMode:   wgpu.FilterModeNearest,
@@ -110,6 +85,6 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) error {
 	}
 }
 
-func (c *ClearCommand) Flush() error {
-	return c.spriteCommand.Flush()
+func (c *ClearCommand) Flush() {
+	c.spriteCommand.Flush()
 }

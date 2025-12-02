@@ -25,12 +25,11 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 	textCommand := textCommand.Get()
 	SwitchToCommand(textCommand)
 
-	err := textCommand.DrawText(dest.texture, commands.DrawTextOptions{
+	textCommand.DrawText(dest.texture, commands.DrawDebugTextOptions{
 		Text:        text,
 		Transform:   opts.Transform,
 		TextColor:   opts.ColorScale.ToColor(),
 		ShadowColor: opts.ShadowColor,
 		TabWidth:    tabWidth,
 	})
-	Handle(err, "render text")
 }

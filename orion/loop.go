@@ -33,9 +33,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 			slog.Int("height", int(surfaceHeight)),
 		)
 
-		if err := viewState.Configure(surfaceWidth, surfaceHeight); err != nil {
-			return fmt.Errorf("resize surface: %w", err)
-		}
+		viewState.Configure(surfaceWidth, surfaceHeight)
 
 		loopState.SurfaceWidth = surfaceWidth
 		loopState.SurfaceHeight = surfaceHeight
@@ -67,10 +65,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	DebugOverlay.StartGetCurrentTexture()
 
 	// get the surface texture (the actual screen)
-	surface, err := CurrentContext().Surface.GetCurrentTexture()
-	if err != nil {
-		return fmt.Errorf("get current texture: %w", err)
-	}
+	surface := CurrentContext().Surface.GetCurrentTexture()
 
 	defer func() {
 		if surface != nil {
@@ -86,7 +81,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	updateScreenTransform(surface, loopState.Canvas.Sizef())
 
 	// run game.Initialize and game.Update
-	err = performGameUpdate(loopState)
+	err := performGameUpdate(loopState)
 	if err != nil {
 		return fmt.Errorf("update game: %w", err)
 	}
@@ -148,7 +143,7 @@ func updateScreenTransform(surface *wgpu.Texture, offscreenSize glm.Vec2f) {
 }
 
 func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Image) error {
-	surfaceView, err := surface.CreateView(nil)
+	surfaceView, err := surface.TryCreateView(nil)
 	if err != nil {
 		return fmt.Errorf("get texture: %w", err)
 	}
@@ -186,7 +181,7 @@ func DefaultScreenTransform(surfaceSize, screenSize glm.Vec2f) glm.Mat3[float32]
 	screenAspect := sw / sh
 
 	var scale float32
-	var xOffset, yOffset int = 0, 0
+	var xOffset, yOffset = 0, 0
 
 	if canvasAspect >= screenAspect {
 		scale = sw / cw

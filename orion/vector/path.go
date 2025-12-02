@@ -78,12 +78,12 @@ func (p *Path) Contour(unitScale float32) []glm.Vec2f {
 
 		case opQuadCurve:
 			// const segments = 16
-			// points = appendQuadCurve(points, curr, op.Control[0], op.End, segments)
+			// points = appendQuadCurve(points, curr, op.Control[0], op.TryEnd, segments)
 			adaptiveQuadCurve(curr, op.Control[0], op.End, unitScale, &points)
 
 		case opCubicCurve:
 			// const segments = 16
-			// points = appendCubicCurve(points, curr, op.Control[0], op.Control[1], op.End, segments)
+			// points = appendCubicCurve(points, curr, op.Control[0], op.Control[1], op.TryEnd, segments)
 			adaptiveCubicCurve(curr, op.Control[0], op.Control[1], op.End, unitScale, &points)
 
 		case opClose:

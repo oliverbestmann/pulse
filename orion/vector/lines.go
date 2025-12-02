@@ -2,7 +2,6 @@ package vector
 
 import (
 	_ "embed"
-	"fmt"
 	"unsafe"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -24,8 +23,8 @@ type drawLinesCommand struct {
 	configsBuf *wgpu.Buffer
 }
 
-func (d *drawLinesCommand) Flush() error {
-	return nil
+func (d *drawLinesCommand) Flush() {
+	return
 }
 
 func (d *drawLinesCommand) Init() {
@@ -33,13 +32,13 @@ func (d *drawLinesCommand) Init() {
 
 	d.cache = pulse.NewPipelineCache[pipelineStub](ctx)
 
-	d.configsBuf = orion.CreateBuffer(wgpu.BufferDescriptor{
+	d.configsBuf = ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "LineConfig",
 		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
 		Size:  128,
 	})
 
-	d.pointsBuf = orion.CreateBuffer(wgpu.BufferDescriptor{
+	d.pointsBuf = ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "LinePoints",
 		Usage: wgpu.BufferUsageStorage | wgpu.BufferUsageCopyDst,
 		Size:  1024 * 1024,
@@ -86,19 +85,13 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 		PointsCount: uint32(len(points)),
 	}
 
-	pipeline, err := d.cache.Get(pipelineConf)
-	if err != nil {
-		return fmt.Errorf("get pipeline: %w", err)
-	}
-
-	dev := orion.CurrentContext()
+	pipeline := d.cache.Get(pipelineConf)
 
 	stencilView := d.getStencilTex(target.Root())
 
-	enc, err := dev.CreateCommandEncoder(nil)
-	if err != nil {
-		return fmt.Errorf("create command encoder: %w", err)
-	}
+	dev := orion.CurrentContext()
+	enc := dev.CreateCommandEncoder(nil)
+	defer enc.Release()
 
 	view, resolveTarget := target.RenderViews()
 
@@ -118,7 +111,7 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 		},
 	})
 
-	bindGroup, err := dev.CreateBindGroup(&wgpu.BindGroupDescriptor{
+	bindGroup := dev.CreateBindGroup(&wgpu.BindGroupDescriptor{
 		Layout: pipeline.GetBindGroupLayout(0),
 		Entries: []wgpu.BindGroupEntry{
 			{
@@ -134,10 +127,6 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 		},
 	})
 
-	if err != nil {
-		return fmt.Errorf("create bindGroup: %w", err)
-	}
-
 	defer bindGroup.Release()
 
 	x, y := target.Offset().XY()
@@ -148,26 +137,14 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 	pass.SetStencilReference(1)
 	pass.SetScissorRect(x, y, w, h)
 	pass.Draw(6+circleTriangleCount*3, uint32(len(points)), 0, 0)
+	pass.End()
 
-	if err := pass.End(); err != nil {
-		return fmt.Errorf("end render pass: %w", err)
-	}
-
-	pass.Release()
-
-	buf, err := enc.Finish(nil)
-	if err != nil {
-		return fmt.Errorf("finish command buffer: %w", err)
-	}
-
+	buf := enc.Finish(nil)
 	defer buf.Release()
 
 	// upload data to gpu and draw
-	err = dev.Queue.WriteBuffer(d.configsBuf, 0, wgpu.ToBytes([]lineConfig{config}))
-	orion.Handle(err, "upload line config")
-
-	err = dev.Queue.WriteBuffer(d.pointsBuf, 0, wgpu.ToBytes(points))
-	orion.Handle(err, "upload line points")
+	dev.Queue.WriteBuffer(d.configsBuf, 0, wgpu.ToBytes([]lineConfig{config}))
+	dev.Queue.WriteBuffer(d.pointsBuf, 0, wgpu.ToBytes(points))
 
 	dev.Queue.Submit(buf)
 
@@ -195,12 +172,8 @@ func (d *drawLinesCommand) getStencilTex(target *pulse.Texture) *wgpu.TextureVie
 
 	dev := orion.CurrentContext()
 
-	texture, err := dev.CreateTexture(&desc)
-	orion.Handle(err, "create line stencil texture")
-
-	view, err := texture.CreateView(nil)
-	orion.Handle(err, "create line stencil texture view")
-
+	texture := dev.CreateTexture(&desc)
+	view := texture.CreateView(nil)
 	stencilTexCache.Add(desc, view)
 
 	return view
@@ -221,8 +194,8 @@ type pipelineStub struct {
 	SampleCount uint32
 }
 
-func (d pipelineStub) Specialize(dev *wgpu.Device) (*wgpu.RenderPipeline, error) {
-	shader := orion.CreateShaderModule(wgpu.ShaderModuleDescriptor{
+func (d pipelineStub) Specialize(dev *wgpu.Device) *wgpu.RenderPipeline {
+	shader := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
 		Label:      "LinesShader",
 		WGSLSource: &wgpu.ShaderSourceWGSL{Code: lineShader},
 	})

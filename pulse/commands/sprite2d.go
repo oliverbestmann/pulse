@@ -67,37 +67,25 @@ type SpriteCommand struct {
 	batchConfig spriteBatchConfig
 }
 
-func NewSpriteCommand(ctx *pulse.Context) (*SpriteCommand, error) {
+func NewSpriteCommand(ctx *pulse.Context) *SpriteCommand {
 	// create a vertex buffer
-	bufInstances, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+	bufInstances := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Sprite.Instances",
 		Usage: wgpu.BufferUsageVertex | wgpu.BufferUsageCopyDst,
 		Size:  uint64(unsafe.Sizeof(spriteInstance{})) * maxSpriteInstances,
 	})
 
-	if err != nil {
-		return nil, fmt.Errorf("create instance buffer: %w", err)
-	}
-
-	bufIndices, err := ctx.CreateBufferInit(&wgpu.BufferInitDescriptor{
+	bufIndices := ctx.CreateBufferInit(&wgpu.BufferInitDescriptor{
 		Label:    "Sprite.Indices",
 		Contents: wgpu.ToBytes([]uint16{2, 0, 1, 1, 3, 2}),
 		Usage:    wgpu.BufferUsageIndex,
 	})
 
-	if err != nil {
-		return nil, fmt.Errorf("create index buffer: %w", err)
-	}
-
-	bufVertexUniforms, err := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+	bufVertexUniforms := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Sprite.VertexUniforms",
 		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
 		Size:  uint64(unsafe.Sizeof(spriteVertexUniforms{})),
 	})
-
-	if err != nil {
-		return nil, fmt.Errorf("create view transform uniform: %w", err)
-	}
 
 	p := &SpriteCommand{
 		ctx:               ctx,
@@ -108,7 +96,7 @@ func NewSpriteCommand(ctx *pulse.Context) (*SpriteCommand, error) {
 
 	p.pipelineCache = pulse.NewPipelineCache[spritePipelineConfig](ctx)
 
-	return p, nil
+	return p
 }
 
 type DrawSpriteOptions struct {
@@ -123,7 +111,7 @@ type DrawSpriteOptions struct {
 	Shader string
 }
 
-func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteOptions) error {
+func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteOptions) {
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
 	}
@@ -144,9 +132,7 @@ func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts Dr
 		len(p.instances)+1 > maxSpriteInstances
 
 	if requireFlush {
-		if err := p.Flush(); err != nil {
-			return fmt.Errorf("flush: %w", err)
-		}
+		p.Flush()
 
 		p.batchConfig = batchConfig
 	}
@@ -176,8 +162,6 @@ func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts Dr
 			uint16(dh),
 		},
 	})
-
-	return nil
 }
 
 type DrawSpriteFromGPUOptions struct {
@@ -191,10 +175,8 @@ type DrawSpriteFromGPUOptions struct {
 	Shader       string
 }
 
-func (p *SpriteCommand) DrawFromGPU(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteFromGPUOptions) error {
-	if err := p.Flush(); err != nil {
-		return fmt.Errorf("flush: %w", err)
-	}
+func (p *SpriteCommand) DrawFromGPU(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteFromGPUOptions) {
+	p.Flush()
 
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
@@ -212,21 +194,18 @@ func (p *SpriteCommand) DrawFromGPU(dest *pulse.Texture, source *pulse.Texture, 
 		shader:              opts.Shader,
 	}
 
-	return p.flushWith(opts.Buffer, uint32(opts.InstanceCount), nil)
+	p.flushWith(opts.Buffer, uint32(opts.InstanceCount), nil)
 
 }
 
-func (p *SpriteCommand) Flush() error {
+func (p *SpriteCommand) Flush() {
 	if len(p.instances) == 0 {
-		return nil
+		return
 	}
 
 	slog.Debug("Rendering sprites", slog.Int("instanceCount", len(p.instances)))
 
-	err := p.ctx.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
-	if err != nil {
-		return fmt.Errorf("update instance buffer: %w", err)
-	}
+	p.ctx.WriteBuffer(p.bufInstances, 0, wgpu.ToBytes(p.instances))
 
 	x0 := p.instances[0].TargetRegion[0]
 	y0 := p.instances[0].TargetRegion[1]
@@ -249,10 +228,10 @@ func (p *SpriteCommand) Flush() error {
 		},
 	}
 
-	return p.flushWith(p.bufInstances, uint32(len(p.instances)), &rect)
+	p.flushWith(p.bufInstances, uint32(len(p.instances)), &rect)
 }
 
-func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *pulse.Rectangle2u) error {
+func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *pulse.Rectangle2u) {
 	defer p.reset()
 
 	batchConfig := p.batchConfig
@@ -270,10 +249,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		MaxAnisotropy: 1,
 	}
 
-	sampler, err := pulse.CachedSampler(p.ctx.Device, descSampler)
-	if err != nil {
-		return err
-	}
+	sampler := pulse.CachedSampler(p.ctx.Device, descSampler)
 
 	pipelineConfig := spritePipelineConfig{
 		TargetFormat:      batchConfig.target.Format(),
@@ -282,12 +258,9 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		ShaderSource:      batchConfig.shader,
 	}
 
-	pc, err := p.pipelineCache.Get(pipelineConfig)
-	if err != nil {
-		return fmt.Errorf("get new pipeline: %w", err)
-	}
+	pc := p.pipelineCache.Get(pipelineConfig)
 
-	bindGroup, err := p.ctx.CreateBindGroup(&wgpu.BindGroupDescriptor{
+	bindGroup := p.ctx.CreateBindGroup(&wgpu.BindGroupDescriptor{
 		Layout: pc.GetBindGroupLayout(0),
 		Entries: []wgpu.BindGroupEntry{
 			{
@@ -306,10 +279,6 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		},
 	})
 
-	if err != nil {
-		return err
-	}
-
 	defer bindGroup.Release()
 
 	// prepare uniforms to upload
@@ -326,16 +295,10 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	}
 
 	// upload to uniform buffer
-	err = p.ctx.WriteBuffer(p.bufVertexUniforms, 0, pulse.AsByteSlice(&uni))
-	if err != nil {
-		return fmt.Errorf("update view transform buffer: %w", err)
-	}
+	p.ctx.WriteBuffer(p.bufVertexUniforms, 0, wgpu.ToBytes([]spriteVertexUniforms{uni}))
 
 	// create command encoder to prepare render pass
-	encoder, err := p.ctx.CreateCommandEncoder(nil)
-	if err != nil {
-		return err
-	}
+	encoder := p.ctx.CreateCommandEncoder(nil)
 	defer encoder.Release()
 
 	view, resolveTarget := batchConfig.target.RenderViews()
@@ -352,12 +315,6 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		},
 	})
 
-	defer func() {
-		if pass != nil {
-			pass.Release()
-		}
-	}()
-
 	if scissorRect != nil {
 		pass.SetScissorRect(scissorRect.XYWH())
 	}
@@ -367,25 +324,12 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	pass.SetVertexBuffer(0, instances, 0, wgpu.WholeSize)
 	pass.SetIndexBuffer(p.bufIndices, wgpu.IndexFormatUint16, 0, wgpu.WholeSize)
 	pass.DrawIndexed(6, instanceCount, 0, 0, 0)
+	pass.End()
 
-	if err := pass.End(); err != nil {
-		return err
-	}
-
-	// must release pass before finishing the encoder
-	pass.Release()
-	pass = nil
-
-	cmdBuffer, err := encoder.Finish(nil)
-	if err != nil {
-		return err
-	}
-
+	cmdBuffer := encoder.Finish(nil)
 	defer cmdBuffer.Release()
 
 	p.ctx.Submit(cmdBuffer)
-
-	return nil
 }
 
 type spritePipelineConfig struct {
@@ -395,20 +339,17 @@ type spritePipelineConfig struct {
 	ShaderSource      string
 }
 
-func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) (*wgpu.RenderPipeline, error) {
+func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) *wgpu.RenderPipeline {
 	slog.Info(
 		"Create RenderPipeline for sprites",
 		slog.Any("config", conf.TargetFormat),
 		slog.Any("sampleCount", conf.TargetSampleCount),
 	)
 
-	shader, err := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
+	shader := dev.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
 		Label:      "Sprite2D.ShaderSource",
 		WGSLSource: &wgpu.ShaderSourceWGSL{Code: conf.ShaderSource},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("compile sprite shader: %w", err)
-	}
 
 	defer shader.Release()
 
@@ -480,12 +421,7 @@ func (conf spritePipelineConfig) Specialize(dev *wgpu.Device) (*wgpu.RenderPipel
 		},
 	}
 
-	pipeline, err := dev.CreateRenderPipeline(desc)
-	if err != nil {
-		return nil, fmt.Errorf("build sprite pipeline: %w", err)
-	}
-
-	return pipeline, nil
+	return dev.CreateRenderPipeline(desc)
 }
 
 func (p *SpriteCommand) reset() {

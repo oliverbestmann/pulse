@@ -41,7 +41,7 @@ type NewTextureOptions struct {
 	Label string
 }
 
-func NewTexture(ctx *Context, opts NewTextureOptions) (*Texture, error) {
+func NewTexture(ctx *Context, opts NewTextureOptions) *Texture {
 	var sampleCount uint32 = 1
 
 	if isOpenGL(ctx) {
@@ -78,25 +78,13 @@ func NewTexture(ctx *Context, opts NewTextureOptions) (*Texture, error) {
 	return NewTextureFromDesc(ctx, desc)
 }
 
-func isOpenGL(ctx *Context) bool {
-	return ctx.Adapter.GetInfo().BackendType == wgpu.BackendTypeOpenGL
-}
-
 // NewTextureFromDesc gives you full control and creates a texture directly from
 // a texture descriptor
-func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, error) {
-	texture, err := ctx.Device.CreateTexture(desc)
-	if err != nil {
-		return nil, err
-	}
+func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) *Texture {
+	texture := ctx.Device.CreateTexture(desc)
 
 	// now create a default texture view
-	textureView, err := texture.CreateView(nil)
-	if err != nil {
-		texture.Release()
-
-		return nil, err
-	}
+	textureView := texture.CreateView(nil)
 
 	var resolveTarget *Texture
 
@@ -105,13 +93,7 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 		descResolve := *desc
 		descResolve.SampleCount = 1
 
-		resolveTarget, err = NewTextureFromDesc(ctx, &descResolve)
-		if err != nil {
-			textureView.Release()
-			texture.Release()
-
-			return nil, fmt.Errorf("create resolveTarget texture: %w", err)
-		}
+		resolveTarget = NewTextureFromDesc(ctx, &descResolve)
 	}
 
 	region := RectangleFromSize(
@@ -135,7 +117,7 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) (*Texture, e
 	// texture itself is the root
 	t.root = t
 
-	return t, nil
+	return t
 }
 
 // WrapTexture creates a texture from an existing wgpu.Texture and wgpu.TextureView. If it is a
@@ -264,10 +246,10 @@ func (t *Texture) RenderViews() (view, resolveView *wgpu.TextureView) {
 	return
 }
 
-func (t *Texture) WritePixels(ctx *Context, pixels []byte) error {
+func (t *Texture) WritePixels(ctx *Context, pixels []byte) {
 	rect := RectangleFromXYWH(0, 0, t.Width(), t.Height())
 
-	return t.WritePixelsToRect(ctx, WritePixelsOptions{
+	t.WritePixelsToRect(ctx, WritePixelsOptions{
 		Pixels: pixels,
 		Region: rect,
 	})
@@ -280,10 +262,10 @@ type WritePixelsOptions struct {
 	MipLevel uint32
 }
 
-func (t *Texture) WritePixelsToRect(ctx *Context, opts WritePixelsOptions) error {
+func (t *Texture) WritePixelsToRect(ctx *Context, opts WritePixelsOptions) {
 	// fail if not in rect
 	if !t.region.Contains(opts.Region) {
-		return fmt.Errorf("target rect %s not in texture region %s", opts.Region, t.region)
+		return
 	}
 
 	if opts.Stride == 0 {
@@ -313,12 +295,7 @@ func (t *Texture) WritePixelsToRect(ctx *Context, opts WritePixelsOptions) error
 	}
 
 	// send data to the gpu
-	err := ctx.WriteTexture(dest, opts.Pixels, layout, size)
-	if err != nil {
-		return fmt.Errorf("copy image data to texture: %w", err)
-	}
-
-	return nil
+	ctx.WriteTexture(dest, opts.Pixels, layout, size)
 }
 
 func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
@@ -327,31 +304,29 @@ func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
 		return nil, fmt.Errorf("decode image from memory: %w", err)
 	}
 
-	return NewTextureFromImage(ctx, src)
+	tex := NewTextureFromImage(ctx, src)
+	return tex, nil
 }
 
-func NewTextureFromImage(ctx *Context, src image.Image) (*Texture, error) {
+func NewTextureFromImage(ctx *Context, src image.Image) *Texture {
 	iw, ih := src.Bounds().Dx(), src.Bounds().Dy()
 	rgba := image.NewNRGBA(image.Rect(0, 0, iw, ih))
 
 	draw.Draw(rgba, rgba.Bounds(), src, image.Point{}, draw.Src)
 
-	t, err := NewTexture(ctx, NewTextureOptions{
-		// TODO handle srgb import
+	t := NewTexture(ctx, NewTextureOptions{
+		// TODO handle srgb import too
 		Format: wgpu.TextureFormatRGBA8Unorm,
 		Width:  uint32(iw),
 		Height: uint32(ih),
 		Label:  "",
 	})
-	if err != nil {
-		return nil, fmt.Errorf("create texture: %w", err)
-	}
 
-	err = t.WritePixels(ctx, rgba.Pix)
-	if err != nil {
-		t.Release()
-		return nil, fmt.Errorf("upload texture: %w", err)
-	}
+	t.WritePixels(ctx, rgba.Pix)
 
-	return t, nil
+	return t
+}
+
+func isOpenGL(ctx *Context) bool {
+	return ctx.Adapter.GetInfo().BackendType == wgpu.BackendTypeOpenGL
 }

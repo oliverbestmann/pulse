@@ -6,3 +6,5 @@ import "github.com/oliverbestmann/go3d/glm"
 type Color = glm.Vec4f
 
 var ColorWhite = Color{1, 1, 1, 1}
+var ColorBlack = Color{0, 0, 0, 1}
+var ColorTransparent = Color{0, 0, 0, 0}

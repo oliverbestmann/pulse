@@ -100,7 +100,7 @@ var shader2d string
 		instances := prepareVertices(meshes)
 		s.vertexCount = uint32(len(instances))
 
-		s.vertexBuf, err = s.device.CreateBufferInit(&wgpu.BufferInitDescriptor{
+		s.vertexBuf, err = s.device.TryCreateBufferInit(&wgpu.BufferInitDescriptor{
 			Label:    "Vertex3 Buffer",
 			Contents: wgpu.ToBytes(instances),
 			Usage:    wgpu.BufferUsageVertex,
@@ -110,7 +110,7 @@ var shader2d string
 		}
 
 		mxTotal := generateViewProjectionMatrix(float32(s.config.Width)/float32(s.config.Height), time.Since(s.startTime))
-		s.uniformBuf, err = s.device.CreateBufferInit(&wgpu.BufferInitDescriptor{
+		s.uniformBuf, err = s.device.TryCreateBufferInit(&wgpu.BufferInitDescriptor{
 			Label:    "Uniform Buffer",
 			Contents: wgpu.ToBytes(mxTotal[:]),
 			Usage:    wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
@@ -119,7 +119,7 @@ var shader2d string
 			return s, err
 		}
 
-		shader, err := s.device.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
+		shader, err := s.device.TryCreateShaderModule(&wgpu.ShaderModuleDescriptor{
 			Label:          "shader.wgsl",
 			WGSLDescriptor: &wgpu.ShaderModuleWGSLDescriptor{Code: shader},
 		})
@@ -128,7 +128,7 @@ var shader2d string
 		}
 		defer shader.Release()
 
-		s.sprites, err = s.device.CreateRenderPipeline(&wgpu.RenderPipelineDescriptor{
+		s.sprites, err = s.device.TryCreateRenderPipeline(&wgpu.RenderPipelineDescriptor{
 			Label: "3D",
 			Vertex: wgpu.VertexState{
 				Module:     shader,
@@ -187,7 +187,7 @@ var shader2d string
 	}
 
 	func createDrawSpritePipeline(s *Context) *wgpu.RenderPipeline {
-		shader, err := s.device.CreateShaderModule(&wgpu.ShaderModuleDescriptor{
+		shader, err := s.device.TryCreateShaderModule(&wgpu.ShaderModuleDescriptor{
 			Label:          "shader2d.wgsl",
 			WGSLDescriptor: &wgpu.ShaderModuleWGSLDescriptor{Code: shader2d},
 		})
@@ -247,7 +247,7 @@ var shader2d string
 			},
 		}
 
-		sprites, err := s.device.CreateRenderPipeline(&desc)
+		sprites, err := s.device.TryCreateRenderPipeline(&desc)
 		if err != nil {
 			must(err)
 		}
@@ -269,14 +269,14 @@ var shader2d string
 			s.multisampleTexture, s.multisampleTextureView, _ = createMultisampleTexture(s.device, s.config)
 
 			mxTotal := generateViewProjectionMatrix(float32(width)/float32(height), time.Since(s.startTime))
-			s.queue.WriteBuffer(s.uniformBuf, 0, wgpu.ToBytes(mxTotal[:]))
+			s.queue.TryWriteBuffer(s.uniformBuf, 0, wgpu.ToBytes(mxTotal[:]))
 
 			s.surface.Configure(s.adapter, s.device, s.config)
 		}
 	}
 
 	func DrawTriangles(s *Context, target *wgpu.TextureView, image *Texture) {
-		encoder, err := s.device.CreateCommandEncoder(nil)
+		encoder, err := s.device.TryCreateCommandEncoder(nil)
 		if err != nil {
 			must(err)
 		}
@@ -296,7 +296,7 @@ var shader2d string
 		bindGroupLayout := s.pipeline2d.GetBindGroupLayout(0)
 		defer bindGroupLayout.Release()
 
-		bindGroup := must2(s.device.CreateBindGroup(&wgpu.BindGroupDescriptor{
+		bindGroup := must2(s.device.TryCreateBindGroup(&wgpu.BindGroupDescriptor{
 			Layout: bindGroupLayout,
 			Entries: []wgpu.BindGroupEntry{
 				{
@@ -331,13 +331,13 @@ var shader2d string
 			0, 3, 1,
 		}
 
-		bufInstances := must2(s.device.CreateBufferInit(&wgpu.BufferInitDescriptor{
+		bufInstances := must2(s.device.TryCreateBufferInit(&wgpu.BufferInitDescriptor{
 			Label:    "QuadVertices",
 			Contents: wgpu.ToBytes(vertexBuf),
 			Usage:    wgpu.BufferUsageVertex,
 		}))
 
-		bufIndices := must2(s.device.CreateBufferInit(&wgpu.BufferInitDescriptor{
+		bufIndices := must2(s.device.TryCreateBufferInit(&wgpu.BufferInitDescriptor{
 			Label:    "QuadIndices",
 			Contents: wgpu.ToBytes(indexBuf),
 			Usage:    wgpu.BufferUsageIndex,
@@ -348,13 +348,13 @@ var shader2d string
 		renderPass.SetVertexBuffer(0, bufInstances, 0, wgpu.WholeSize)
 		renderPass.SetIndexBuffer(bufIndices, wgpu.IndexFormatUint32, 0, bufIndices.GetSize())
 		renderPass.DrawIndexed(6, 1, 0, 0, 0)
-		if err := renderPass.End(); err != nil {
+		if err := renderPass.TryEnd(); err != nil {
 			renderPass.Release()
 			must(err)
 		}
 		renderPass.Release() // must release
 
-		cmdBuffer, err := encoder.Finish(nil)
+		cmdBuffer, err := encoder.TryFinish(nil)
 		if err != nil {
 			must(err)
 		}
@@ -379,15 +379,15 @@ var shader2d string
 		// update the camera matrix
 		width, height := s.config.Width, s.config.Height
 		mxTotal := generateViewProjectionMatrix(float32(width)/float32(height), time.Since(s.startTime))
-		s.queue.WriteBuffer(s.uniformBuf, 0, wgpu.ToBytes(mxTotal[:]))
+		s.queue.TryWriteBuffer(s.uniformBuf, 0, wgpu.ToBytes(mxTotal[:]))
 
-		view, err := screen.CreateView(nil)
+		view, err := screen.TryCreateView(nil)
 		if err != nil {
 			return err
 		}
 		defer view.Release()
 
-		encoder, err := s.device.CreateCommandEncoder(nil)
+		encoder, err := s.device.TryCreateCommandEncoder(nil)
 		if err != nil {
 			return err
 		}
@@ -415,7 +415,7 @@ var shader2d string
 		bindGroupLayout := s.sprites.GetBindGroupLayout(0)
 		defer bindGroupLayout.Release()
 
-		bindGroup, err := s.device.CreateBindGroup(&wgpu.BindGroupDescriptor{
+		bindGroup, err := s.device.TryCreateBindGroup(&wgpu.BindGroupDescriptor{
 			Layout: bindGroupLayout,
 			Entries: []wgpu.BindGroupEntry{
 				{
@@ -442,13 +442,13 @@ var shader2d string
 		renderPass.SetBindGroup(0, bindGroup, nil)
 		renderPass.SetVertexBuffer(0, s.vertexBuf, 0, wgpu.WholeSize)
 		renderPass.Draw(s.vertexCount, 1, 0, 0)
-		if err := renderPass.End(); err != nil {
+		if err := renderPass.TryEnd(); err != nil {
 			renderPass.Release()
 			return err
 		}
 		renderPass.Release() // must release
 
-		cmdBuffer, err := encoder.Finish(nil)
+		cmdBuffer, err := encoder.TryFinish(nil)
 		if err != nil {
 			return err
 		}
