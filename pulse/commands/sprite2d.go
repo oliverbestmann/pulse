@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"unsafe"
 
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/pulse"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

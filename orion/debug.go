@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/pulse"
 )
 
 type frame struct {

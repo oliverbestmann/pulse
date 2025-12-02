@@ -4,9 +4,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/orion"
-	"github.com/oliverbestmann/go3d/orion/vector"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/orion"
+	"github.com/oliverbestmann/pulse/orion/vector"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

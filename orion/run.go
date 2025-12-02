@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/oliverbestmann/go3d/glimpse"
-	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/pulse/glimpse"
+	"github.com/oliverbestmann/pulse/pulse"
 )
 
 type RunGameOptions struct {

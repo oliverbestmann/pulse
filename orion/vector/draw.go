@@ -4,8 +4,8 @@ import (
 	"unsafe"
 
 	"github.com/oliverbestmann/earcut-go"
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/orion"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/orion"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

@@ -5,9 +5,9 @@ import (
 	"unsafe"
 
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/orion"
-	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/orion"
+	"github.com/oliverbestmann/pulse/pulse"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

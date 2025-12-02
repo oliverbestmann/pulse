@@ -1,8 +1,8 @@
 package orion
 
 import (
-	"github.com/oliverbestmann/go3d/pulse"
-	"github.com/oliverbestmann/go3d/pulse/commands"
+	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/pulse/commands"
 )
 
 var clearCommand global[*commands.ClearCommand]

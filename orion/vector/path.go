@@ -3,7 +3,7 @@ package vector
 import (
 	"math"
 
-	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/pulse/glm"
 )
 
 type operationType uint32

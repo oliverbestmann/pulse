@@ -3,7 +3,7 @@ package pulse
 import (
 	"fmt"
 
-	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/pulse/glm"
 	"golang.org/x/exp/constraints"
 )
 

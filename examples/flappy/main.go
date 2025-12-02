@@ -10,10 +10,10 @@ import (
 
 	_ "image/png"
 
+	"github.com/oliverbestmann/pulse/glimpse"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/orion"
 	"github.com/oliverbestmann/webgpu/wgpu"
-	"github.com/oliverbestmann/go3d/glimpse"
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/orion"
 )
 
 //go:embed flappy.png

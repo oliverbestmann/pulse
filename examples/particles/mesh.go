@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/pulse/glm"
 )
 
 type Vec = glm.Vec3[float32]

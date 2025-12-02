@@ -6,7 +6,7 @@ import (
 	"image"
 	"image/draw"
 
-	"github.com/oliverbestmann/go3d/glm"
+	"github.com/oliverbestmann/pulse/glm"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/oliverbestmann/go3d/orion"
+	"github.com/oliverbestmann/pulse/orion"
 )
 
 func main() {

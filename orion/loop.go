@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/oliverbestmann/go3d/glimpse"
-	"github.com/oliverbestmann/go3d/glm"
-	"github.com/oliverbestmann/go3d/pulse"
+	"github.com/oliverbestmann/pulse/glimpse"
+	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/pulse"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 

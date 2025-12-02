@@ -1,6 +1,6 @@
 package pulse
 
-import "github.com/oliverbestmann/go3d/glm"
+import "github.com/oliverbestmann/pulse/glm"
 
 // Color is an RGBA color value.
 type Color = glm.Vec4f
