@@ -99,7 +99,7 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	// present the rendered image
 	viewState.Surface.Present()
 
-	// we do not need to release the screen if present was successful
+	// we do not need to release the surface texture if present was successful
 	surface = nil
 
 	DebugOverlay.EndFrame()

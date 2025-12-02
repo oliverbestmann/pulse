@@ -43,6 +43,8 @@ github.com/oliverbestmann/box2d-go v0.1.1 h1:co9A+JEfslgfmI7NfVAd2PnJxeiY3nFV39X
 github.com/oliverbestmann/box2d-go v0.1.1/go.mod h1:1fuzkQOCSnu18iHuruiJriNmrKsMEk9fEH3SJ7MHoic=
 github.com/oliverbestmann/earcut-go v1.0.0 h1:zmmQR5ikmpIB1gmO+KPbN/OG5HqFj6jLdpV2bzJRNCI=
 github.com/oliverbestmann/earcut-go v1.0.0/go.mod h1:ilxChwLCGeq6BhhkMmpuh1vEN02KCla3bXentG4Kqp8=
+github.com/oliverbestmann/webgpu v1.0.0 h1:RxYc0vOFiiI9yMH+6/1E7NaM2S7UXoaB3F24sEi+sfc=
+github.com/oliverbestmann/webgpu v1.0.0/go.mod h1:9C+Pz7r1YtDdYqwkR2GkKex0Iu2acy6/mOJ76HHoCHo=
 github.com/oliverbestmann/webgpu v1.27.0 h1:afZeq5ZBvtM7jyyyGqzrjeTZrxQ9pgB+NyPRxDLosNg=
 github.com/oliverbestmann/webgpu v1.27.0/go.mod h1:9C+Pz7r1YtDdYqwkR2GkKex0Iu2acy6/mOJ76HHoCHo=
 github.com/oliverbestmann/webgpu/libs-android v0.0.0-20251123130330-255708779f8b h1:j6LBE43/tiI/qInGkjF/bFAGnIcnc1uhGSFZ/rih8bc=

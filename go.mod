@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oliverbestmann/box2d-go v0.1.1
 	github.com/oliverbestmann/earcut-go v1.0.0
-	github.com/oliverbestmann/webgpu v1.27.0
+	github.com/oliverbestmann/webgpu v1.0.0
 	github.com/pkg/profile v1.7.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
 	golang.org/x/mobile v0.0.0-20251113184115-a159579294ab
