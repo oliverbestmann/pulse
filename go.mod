@@ -1,4 +1,4 @@
-module github.com/oliverbestmann/go3d
+module github.com/oliverbestmann/pulse
 
 go 1.25
 
