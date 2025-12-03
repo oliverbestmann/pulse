@@ -11,7 +11,7 @@ func QuaternionFromAxisAngle[T Numeric](axis Vec3[T], angleRad T) Quaternion[T] 
 	sin, cos := math.Sincos(float64(angleRad) * 0.5)
 	return Quaternion[T]{
 		S: T(cos),
-		V: axis.MulScalar(T(sin)),
+		V: axis.Scale(T(sin)),
 	}
 }
 
