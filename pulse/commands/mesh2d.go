@@ -63,9 +63,8 @@ func NewMesh2dCommand(ctx *pulse.Context) *Mesh2dCommand {
 type DrawMesh2dOptions struct {
 	Transform  glm.Mat3f
 	BlendState wgpu.BlendState
-
-	Vertices []MeshVertex
-
+	Color      glm.Vec4f
+	Vertices   []MeshVertex
 	// shader code, use default if empty
 	Shader string
 }
@@ -100,7 +99,7 @@ func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOpti
 		for _, v := range opts.Vertices[idx : idx+3] {
 			p.vertices = append(p.vertices, MeshVertex{
 				Position: modelViewTransform.Transform(v.Position.Extend(1)).Truncate(),
-				Color:    v.Color,
+				Color:    v.Color.Mul(opts.Color),
 			})
 		}
 	}

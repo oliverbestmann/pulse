@@ -99,7 +99,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 	})
 }
 
-func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount uint, opts *DrawImageOptions) {
+func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, count uint, opts *DrawImageOptions) {
 	if opts == nil {
 		opts = &DrawImageOptions{}
 	}
@@ -119,7 +119,7 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 
 	sprites.DrawFromGPU(i.texture, source.texture, commands.DrawSpriteFromGPUOptions{
 		Buffer:        buf,
-		InstanceCount: particleCount,
+		InstanceCount: count,
 		FilterMode:    filterMode,
 		BlendState:    blendState,
 		AddressModeU:  wgpu.AddressModeClampToEdge,
@@ -128,8 +128,8 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, particleCount
 }
 
 type Vertex2d struct {
-	Position   glm.Vec2f
-	ColorScale ColorScale
+	Position glm.Vec2f
+	Color    ColorScale
 }
 
 type DrawTrianglesOptions struct {
@@ -153,16 +153,12 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 		blendState = opts.BlendState
 	}
 
-	// extra color scale to scale all vertices with
-	// TODO move transformation to the gpu?
-	colorScale := opts.ColorScale.ToColor()
-
 	transformed := make([]commands.MeshVertex, len(vertices))
 
 	for idx := range vertices {
 		transformed[idx] = commands.MeshVertex{
 			Position: vertices[idx].Position,
-			Color:    vertices[idx].ColorScale.ToColor().Mul(colorScale),
+			Color:    vertices[idx].Color.ToColor(),
 		}
 	}
 
@@ -170,6 +166,7 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 		Transform:  opts.Transform,
 		BlendState: blendState,
 		Vertices:   transformed,
+		Color:      opts.ColorScale.ToColor(),
 		Shader:     opts.Shader,
 	})
 }

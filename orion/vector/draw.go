@@ -30,18 +30,15 @@ func FillPath(target *orion.Image, path Path, opts *FillPathOptions) {
 	vertices := make([]orion.Vertex2d, len(indices))
 	for i := 0; i < len(indices); i += 3 {
 		vertices[i] = orion.Vertex2d{
-			Position:   toVec(points[indices[i]]),
-			ColorScale: opts.ColorScale,
+			Position: toVec(points[indices[i]]),
 		}
 
 		vertices[i+1] = orion.Vertex2d{
-			Position:   toVec(points[indices[i+1]]),
-			ColorScale: opts.ColorScale,
+			Position: toVec(points[indices[i+1]]),
 		}
 
 		vertices[i+2] = orion.Vertex2d{
-			Position:   toVec(points[indices[i+2]]),
-			ColorScale: opts.ColorScale,
+			Position: toVec(points[indices[i+2]]),
 		}
 	}
 
