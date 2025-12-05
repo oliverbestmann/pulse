@@ -27,8 +27,9 @@ type mesh2dBatchConfig struct {
 type MeshVertex struct {
 	_ structs.HostLayout
 
-	Position glm.Vec2f
-	Color    glm.Vec4f
+	Position       glm.Vec2f
+	Color          glm.Vec4f
+	TransformIndex uint32
 }
 
 type Mesh2dCommand struct {
@@ -36,23 +37,43 @@ type Mesh2dCommand struct {
 
 	pipelineCache *pulse.PipelineCache[mesh2dRenderPipeline]
 
-	vertices    []MeshVertex
-	buvVertices *wgpu.Buffer
+	vertices        []MeshVertex
+	modelTransforms [][12]float32
+
+	bufVertices        *wgpu.Buffer
+	bufModelTransforms *wgpu.Buffer
+	bufViewTransform   *wgpu.Buffer
 
 	batchConfig mesh2dBatchConfig
 }
 
 func NewMesh2dCommand(ctx *pulse.Context) *Mesh2dCommand {
 	// create a vertex buffer
-	buvVertices := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+	bufVertices := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",
 		Usage: wgpu.BufferUsageVertex | wgpu.BufferUsageCopyDst,
 		Size:  uint64(unsafe.Sizeof(MeshVertex{})) * maxMeshVertices,
 	})
 
+	// create a transform buffer
+	bufModelTransforms := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+		Label: "Mesh2d.ModelTransformations",
+		Usage: wgpu.BufferUsageStorage | wgpu.BufferUsageCopyDst,
+		Size:  uint64(unsafe.Sizeof([12]float32{})) * 1024 * 16,
+	})
+
+	// buffer to hold view transform
+	bufViewTransform := ctx.CreateBuffer(&wgpu.BufferDescriptor{
+		Label: "Mesh2d.ViewTransform",
+		Usage: wgpu.BufferUsageUniform | wgpu.BufferUsageCopyDst,
+		Size:  uint64(unsafe.Sizeof([12]float32{})),
+	})
+
 	p := &Mesh2dCommand{
-		ctx:         ctx,
-		buvVertices: buvVertices,
+		ctx:                ctx,
+		bufVertices:        bufVertices,
+		bufModelTransforms: bufModelTransforms,
+		bufViewTransform:   bufViewTransform,
 	}
 
 	p.pipelineCache = pulse.NewPipelineCache[mesh2dRenderPipeline](ctx)
@@ -80,12 +101,14 @@ func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOpti
 		shader:     opts.Shader,
 	}
 
-	// build a new view transform
-	vw, vh := batchConfig.target.Width(), batchConfig.target.Height()
-	viewTransform := glm.ScaleMat3(1/float32(vw), 1/float32(vh))
-
 	// model view matrix
-	modelViewTransform := viewTransform.Mul(opts.Transform)
+	modelViewTransform := opts.Transform.ToWGPU()
+
+	if len(p.modelTransforms) == 0 || p.modelTransforms[len(p.modelTransforms)-1] != modelViewTransform {
+		p.modelTransforms = append(p.modelTransforms, modelViewTransform)
+	}
+
+	modelTransformIndex := uint32(len(p.modelTransforms) - 1)
 
 	for idx := 0; idx < len(opts.Vertices); idx += 3 {
 		requireFlush := p.batchConfig != batchConfig ||
@@ -94,12 +117,17 @@ func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOpti
 		if requireFlush {
 			p.Flush()
 			p.batchConfig = batchConfig
+
+			// new batch, need to push our transform again
+			p.modelTransforms = append(p.modelTransforms, modelViewTransform)
+			modelTransformIndex = 0
 		}
 
 		for _, v := range opts.Vertices[idx : idx+3] {
 			p.vertices = append(p.vertices, MeshVertex{
-				Position: modelViewTransform.Transform(v.Position.Extend(1)).Truncate(),
-				Color:    v.Color.Mul(opts.Color),
+				Position:       v.Position,
+				Color:          v.Color.Mul(opts.Color),
+				TransformIndex: modelTransformIndex,
 			})
 		}
 	}
@@ -116,7 +144,7 @@ func (p *Mesh2dCommand) Flush() {
 
 	slog.Debug("Rendering triangles", slog.Int("vertexCount", len(p.vertices)))
 
-	p.ctx.WriteBuffer(p.buvVertices, 0, wgpu.ToBytes(p.vertices))
+	p.ctx.WriteBuffer(p.bufVertices, 0, wgpu.ToBytes(p.vertices))
 
 	pipelineConfig := mesh2dRenderPipeline{
 		TargetFormat:      batchConfig.target.Format(),
@@ -126,6 +154,25 @@ func (p *Mesh2dCommand) Flush() {
 	}
 
 	pc := p.pipelineCache.Get(pipelineConfig)
+
+	bindGroup := p.ctx.CreateBindGroup(&wgpu.BindGroupDescriptor{
+		Label:  "Mesh2dBindGroup",
+		Layout: pc.GetBindGroupLayout(0),
+		Entries: []wgpu.BindGroupEntry{
+			{
+				Binding: 0,
+				Buffer:  p.bufViewTransform,
+				Size:    wgpu.WholeSize,
+			},
+			{
+				Binding: 1,
+				Buffer:  p.bufModelTransforms,
+				Size:    wgpu.WholeSize,
+			},
+		},
+	})
+
+	defer bindGroup.Release()
 
 	encoder := p.ctx.CreateCommandEncoder(nil)
 	defer encoder.Release()
@@ -150,13 +197,22 @@ func (p *Mesh2dCommand) Flush() {
 
 	pass.SetPipeline(pc.Pipeline)
 	pass.SetScissorRect(sx, sy, sw, sh)
-	pass.SetVertexBuffer(0, p.buvVertices, 0, wgpu.WholeSize)
+	pass.SetBindGroup(0, bindGroup, nil)
+	pass.SetVertexBuffer(0, p.bufVertices, 0, wgpu.WholeSize)
 	pass.Draw(uint32(len(p.vertices)), 1, 0, 0)
 	pass.End()
 
 	cmdBuffer := encoder.Finish(nil)
 	defer cmdBuffer.Release()
 
+	vw, vh := batchConfig.target.Root().Size().XY()
+	viewTransform := glm.Mat3f{}.
+		Translate(-1, 1).
+		Scale(2.0/float32(vw), -2.0/float32(vh)).
+		ToWGPU()
+
+	p.ctx.WriteBuffer(p.bufModelTransforms, 0, wgpu.ToBytes(p.modelTransforms))
+	p.ctx.WriteBuffer(p.bufViewTransform, 0, wgpu.ToBytes(viewTransform[:]))
 	p.ctx.Submit(cmdBuffer)
 }
 
@@ -203,6 +259,12 @@ func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) *wgpu.RenderPipeli
 							Offset:         uint64(unsafe.Offsetof(MeshVertex{}.Color)),
 							ShaderLocation: 1,
 						},
+						{
+							// transform index
+							Format:         wgpu.VertexFormatUint32,
+							Offset:         uint64(unsafe.Offsetof(MeshVertex{}.TransformIndex)),
+							ShaderLocation: 2,
+						},
 					},
 				},
 			},
@@ -236,5 +298,6 @@ func (conf mesh2dRenderPipeline) Specialize(dev *wgpu.Device) *wgpu.RenderPipeli
 
 func (p *Mesh2dCommand) reset() {
 	p.vertices = p.vertices[:0]
+	p.modelTransforms = p.modelTransforms[:0]
 	p.batchConfig = mesh2dBatchConfig{}
 }

@@ -139,6 +139,8 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 	binWidth := float32(target.Width()) / float32(len(d.frames))
 	timeScale := float32(30) / (1.0 / 60.0)
 
+	vertices := make([]Vertex2d, 0, 6*4*len(d.frames)+6)
+
 	for idx, frame := range d.frames {
 		x := float32(idx) * binWidth
 		y := float32(target.Height())
@@ -146,10 +148,32 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 		rect := func(duration time.Duration, colorScale ColorScale) {
 			height := float32(duration.Seconds()) * timeScale
 
-			target.DrawImage(d.white, &DrawImageOptions{
-				ColorScale: colorScale,
-				Transform:  glm.TranslationMat3(x, y).Scale(binWidth, -height),
-			})
+			vertices = append(vertices,
+				Vertex2d{
+					Position: glm.Vec2f{x, y},
+					Color:    colorScale,
+				},
+				Vertex2d{
+					Position: glm.Vec2f{x, y - height},
+					Color:    colorScale,
+				},
+				Vertex2d{
+					Position: glm.Vec2f{x + binWidth, y - height},
+					Color:    colorScale,
+				},
+				Vertex2d{
+					Position: glm.Vec2f{x, y},
+					Color:    colorScale,
+				},
+				Vertex2d{
+					Position: glm.Vec2f{x + binWidth, y - height},
+					Color:    colorScale,
+				},
+				Vertex2d{
+					Position: glm.Vec2f{x + binWidth, y},
+					Color:    colorScale,
+				},
+			)
 
 			y -= height
 		}
@@ -163,12 +187,37 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 	}
 
 	if fps := float32(d.fps()); fps > 0 {
-		y := float32(target.Height()) - timeScale/fps
+		y := float32(target.Height()) - timeScale/fps - 0.5
 
-		target.DrawImage(d.white, &DrawImageOptions{
-			Transform: glm.TranslationMat3(0, y).Scale(float32(target.Width()), 1),
-		})
+		vertices = append(vertices,
+			Vertex2d{
+				Position: glm.Vec2f{0, y},
+				Color:    pulse.ColorWhite,
+			},
+			Vertex2d{
+				Position: glm.Vec2f{0, y + 1},
+				Color:    pulse.ColorWhite,
+			},
+			Vertex2d{
+				Position: glm.Vec2f{float32(target.Width()), y + 1},
+				Color:    pulse.ColorWhite,
+			},
+			Vertex2d{
+				Position: glm.Vec2f{0, y},
+				Color:    pulse.ColorWhite,
+			},
+			Vertex2d{
+				Position: glm.Vec2f{float32(target.Width()), y + 1},
+				Color:    pulse.ColorWhite,
+			},
+			Vertex2d{
+				Position: glm.Vec2f{float32(target.Width()), y},
+				Color:    pulse.ColorWhite,
+			},
+		)
 	}
+
+	target.DrawTriangles(vertices, nil)
 }
 
 func (d *debugOverlay) fps() float64 {
