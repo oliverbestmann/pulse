@@ -451,7 +451,7 @@ func (m {{.Type}}) Transpose() {{.Type}} {
 	}
 }
 
-func (m {{.Type}}) Values() {{.ArrayType}} {
+func (m {{.Type}}) Components() {{.ArrayType}} {
 	values := m.values
 	{{- range $i := $.Len }}
 	values[{{$i}}][{{$i}}] += 1

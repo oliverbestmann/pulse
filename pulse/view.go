@@ -42,6 +42,9 @@ func NewView(dev *Context, msaa bool, depth bool) *View {
 		Format:      wgpu.TextureFormatBGRA8Unorm,
 		PresentMode: wgpu.PresentModeFifo,
 		AlphaMode:   caps.AlphaModes[0],
+		ViewFormats: []wgpu.TextureFormat{
+			wgpu.TextureFormatBGRA8UnormSrgb,
+		},
 
 		// try to reduce input latency
 		DesiredMaximumFrameLatency: 1,
@@ -59,20 +62,19 @@ func (vs *View) Depth() bool {
 }
 
 func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
-	if vs.MSAA() {
-		screenTexture := WrapTexture(screen, screenView, nil)
+	screenTexture := WrapTexture(screen, WrapTextureOptions{
+		TextureView:       screenView,
+		TextureViewFormat: wgpu.TextureFormatBGRA8UnormSrgb,
+	})
 
-		return WrapTexture(
-			vs.msaaTexture.texture,
-			vs.msaaTexture.textureView,
-			screenTexture,
-		)
+	if vs.MSAA() {
+		return WrapTexture(vs.msaaTexture.texture, WrapTextureOptions{
+			TextureViewFormat: wgpu.TextureFormatBGRA8UnormSrgb,
+			TextureView:       vs.msaaTexture.textureView,
+			ResolveTarget:     screenTexture,
+		})
 	} else {
-		return WrapTexture(
-			screen,
-			screenView,
-			nil,
-		)
+		return screenTexture
 	}
 }
 

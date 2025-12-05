@@ -80,8 +80,7 @@ func StrokePath(target *orion.Image, path Path, opts *StrokePathOptions) {
 
 	orion.SwitchToCommand(drawLines)
 
-	err := drawLines.Draw(target.Texture(), points, *opts)
-	orion.Handle(err, "stroke path")
+	drawLines.Draw(target.Texture(), points, *opts)
 }
 
 func toVec(point earcut.Point[float32]) glm.Vec2f {

@@ -154,12 +154,12 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 			y -= height
 		}
 
-		rect(frame.GameUpdate, ColorScaleRGBA(0.25, 0.25, 1.0, 0.85))
-		rect(frame.GameDraw, ColorScaleRGBA(0.25, 1.0, 0.25, 0.85))
-		rect(frame.GetCurrentTexture, ColorScaleRGBA(0.5, 0.5, 0.5, 0.5))
+		rect(frame.GameUpdate, pulse.ColorLinearRGBA(0.25, 0.25, 1.0, 0.85))
+		rect(frame.GameDraw, pulse.ColorLinearRGBA(0.25, 1.0, 0.25, 0.85))
+		rect(frame.GetCurrentTexture, pulse.ColorLinearRGBA(0.5, 0.5, 0.5, 0.5))
 
 		remaining := frame.Total - frame.GameUpdate - frame.GameDraw - frame.GetCurrentTexture
-		rect(remaining, ColorScaleRGBA(0.25, 0.25, 0.25, 0.5))
+		rect(remaining, pulse.ColorLinearRGBA(0.25, 0.25, 0.25, 0.5))
 	}
 
 	if fps := float32(d.fps()); fps > 0 {

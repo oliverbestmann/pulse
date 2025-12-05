@@ -120,14 +120,31 @@ func NewTextureFromDesc(ctx *Context, desc *wgpu.TextureDescriptor) *Texture {
 	return t
 }
 
+type WrapTextureOptions struct {
+	// A texture view. If no texture view is specified, a new texture view will
+	// be created using the provided TextureViewDescriptor
+	TextureView *wgpu.TextureView
+
+	// A texture view descriptor.
+	TextureViewDescriptor *wgpu.TextureViewDescriptor
+
+	// TextureViewFormat of the texture view. This needs to be specified if
+	// a TextureView is provided and the views texture format differs from the
+	// textures format.
+	TextureViewFormat wgpu.TextureFormat
+
+	// ResolveTarget is required if the texture has multisampling enabled
+	ResolveTarget *Texture
+}
+
 // WrapTexture creates a texture from an existing wgpu.Texture and wgpu.TextureView. If it is a
 // multisample texture, you also need to specify a resolve target.
-func WrapTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTarget *Texture) *Texture {
-	if texture.GetSampleCount() > 1 && resolveTarget == nil {
+func WrapTexture(texture *wgpu.Texture, opts WrapTextureOptions) *Texture {
+	if texture.GetSampleCount() > 1 && opts.ResolveTarget == nil {
 		panic("no resolveTarget specified for multisample texture")
 	}
 
-	if texture.GetSampleCount() == 1 && resolveTarget != nil {
+	if texture.GetSampleCount() == 1 && opts.ResolveTarget != nil {
 		panic("resolveTarget specified for multisample texture")
 	}
 
@@ -139,11 +156,31 @@ func WrapTexture(texture *wgpu.Texture, textureView *wgpu.TextureView, resolveTa
 		},
 	)
 
+	textureView := opts.TextureView
+	if textureView == nil {
+		if opts.TextureViewFormat != wgpu.TextureFormatUndefined {
+			panic("TextureViewFormat must not be specified if no TextureView is provided")
+		}
+
+		textureView = texture.CreateView(opts.TextureViewDescriptor)
+	}
+
+	textureViewFormat := texture.GetFormat()
+	if opts.TextureView != nil {
+		if opts.TextureViewFormat != wgpu.TextureFormatUndefined {
+			textureViewFormat = opts.TextureViewFormat
+		}
+	} else {
+		if opts.TextureViewDescriptor != nil {
+			textureViewFormat = opts.TextureViewDescriptor.Format
+		}
+	}
+
 	t := &Texture{
 		texture:       texture,
 		textureView:   textureView,
-		resolveTarget: resolveTarget,
-		format:        texture.GetFormat(),
+		resolveTarget: opts.ResolveTarget,
+		format:        textureViewFormat,
 		sampleCount:   texture.GetSampleCount(),
 		region:        region,
 	}
@@ -298,28 +335,33 @@ func (t *Texture) WritePixelsToRect(ctx *Context, opts WritePixelsOptions) {
 	ctx.WriteTexture(dest, opts.Pixels, layout, size)
 }
 
-func DecodeTextureFromMemory(ctx *Context, buf []byte) (*Texture, error) {
+func DecodeTextureFromMemory(ctx *Context, buf []byte, srgb bool) (*Texture, error) {
 	src, _, err := image.Decode(bytes.NewReader(buf))
 	if err != nil {
 		return nil, fmt.Errorf("decode image from memory: %w", err)
 	}
 
-	tex := NewTextureFromImage(ctx, src)
+	tex := NewTextureFromImage(ctx, src, srgb)
 	return tex, nil
 }
 
-func NewTextureFromImage(ctx *Context, src image.Image) *Texture {
+// NewTextureFromImage creates a new Texture from the given golang image.Image instance.
+func NewTextureFromImage(ctx *Context, src image.Image, srgb bool) *Texture {
 	iw, ih := src.Bounds().Dx(), src.Bounds().Dy()
 	rgba := image.NewNRGBA(image.Rect(0, 0, iw, ih))
 
 	draw.Draw(rgba, rgba.Bounds(), src, image.Point{}, draw.Src)
 
+	format := wgpu.TextureFormatRGBA8Unorm
+	if srgb {
+		format = wgpu.TextureFormatRGBA8UnormSrgb
+	}
+
 	t := NewTexture(ctx, NewTextureOptions{
-		// TODO handle srgb import too
-		Format: wgpu.TextureFormatRGBA8Unorm,
+		Format: format,
 		Width:  uint32(iw),
 		Height: uint32(ih),
-		Label:  "",
+		Label:  "TexFromImage",
 	})
 
 	t.WritePixels(ctx, rgba.Pix)

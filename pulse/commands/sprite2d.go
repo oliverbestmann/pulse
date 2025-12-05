@@ -36,7 +36,7 @@ type spriteBatchConfig struct {
 
 type spriteInstance struct {
 	// Color to tint the sprite with
-	Color pulse.Color
+	Color glm.Vec4f
 
 	// first and second row of the transposed affine
 	ModelTransposedCol0 glm.Vec3f
@@ -144,7 +144,7 @@ func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts Dr
 	dw, dh := dest.Size().XY()
 
 	p.instances = append(p.instances, spriteInstance{
-		Color:               opts.Color,
+		Color:               opts.Color.ToVec(),
 		ModelTransposedCol0: opts.Transform.Row(0),
 		ModelTransposedCol1: opts.Transform.Row(1),
 

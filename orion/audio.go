@@ -24,7 +24,7 @@ var context = sync.OnceValue(func() *oto.Context {
 		SampleRate:   StereoSamplesPerSecond,
 		Format:       oto.FormatFloat32LE,
 		ChannelCount: 2,
-		BufferSize:   32 * time.Millisecond,
+		BufferSize:   100 * time.Millisecond,
 	})
 
 	if err != nil {

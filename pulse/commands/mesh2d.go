@@ -28,7 +28,7 @@ type MeshVertex struct {
 	_ structs.HostLayout
 
 	Position glm.Vec2f
-	Color    pulse.Color
+	Color    glm.Vec4f
 }
 
 type Mesh2dCommand struct {

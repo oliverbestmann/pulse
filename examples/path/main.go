@@ -7,6 +7,7 @@ import (
 	"github.com/oliverbestmann/pulse/glm"
 	"github.com/oliverbestmann/pulse/orion"
 	"github.com/oliverbestmann/pulse/orion/vector"
+	"github.com/oliverbestmann/pulse/pulse"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -34,7 +35,7 @@ func (g Game) Draw(screen *orion.Image) {
 	scale := float32(screen.Width()) / 768.0
 	toScreen := glm.Mat3f{}.Scale(scale, scale)
 
-	screen.Clear(glm.Vec4f{0, 0, 0, 1})
+	screen.Clear(pulse.ColorBlack)
 
 	var path vector.Path
 	path.MoveTo(glm.Vec2f{200, 200})
@@ -44,16 +45,34 @@ func (g Game) Draw(screen *orion.Image) {
 
 	vector.FillPath(screen, path, &vector.FillPathOptions{
 		Transform:  toScreen.Translate(0, -200).Scale(2.0, 2.0),
-		ColorScale: orion.ColorScaleRGBA(1.0, 0.3, 0.6, 1.0),
+		ColorScale: pulse.ColorLinearRGBA(1.0, 0.3, 0.6, 1.0),
 	})
 
 	smallScreen := screen.SubImage(200, 200, screen.Width()-400, screen.Height()-400)
 
 	vector.StrokePath(smallScreen, path, &vector.StrokePathOptions{
 		Transform:  glm.Mat3f{}.Translate(-200, -200).Mul(toScreen).Translate(0, -200).Scale(2.0, 2.0),
-		ColorScale: orion.ColorScaleRGBA(1, 1, 1, 1.0),
+		ColorScale: pulse.ColorLinearRGBA(1, 1, 1, 1.0),
 		Thickness:  1,
 	})
+
+	// draw a linear gradient
+	points := []orion.Vertex2d{
+		{
+			Position: glm.Vec2f{},
+			Color:    pulse.ColorLinearRGBA(0, 0, 0, 1),
+		},
+		{
+			Position: glm.Vec2f{0, 200},
+			Color:    pulse.ColorLinearRGBA(0, 0, 0, 1),
+		},
+		{
+			Position: glm.Vec2f{800, 200},
+			Color:    pulse.ColorLinearRGBA(1, 1, 1, 1),
+		},
+	}
+
+	screen.DrawTriangles(points, &orion.DrawTrianglesOptions{})
 
 	orion.DebugOverlay.Draw(screen)
 }

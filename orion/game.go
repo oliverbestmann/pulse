@@ -3,6 +3,7 @@ package orion
 import (
 	"errors"
 
+	"github.com/oliverbestmann/pulse/pulse"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -71,7 +72,7 @@ func (d DefaultGame) Update() error {
 }
 
 func (d DefaultGame) Draw(screen *Image) {
-	screen.Clear(Color{0.7, 0.7, 0.8, 1.0})
+	screen.Clear(pulse.ColorLinearRGBA(0.7, 0.7, 0.8, 1.0))
 }
 
 func (d DefaultGame) DrawToSurface(surface, offscreen *Image) {

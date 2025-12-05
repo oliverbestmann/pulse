@@ -78,7 +78,8 @@ func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.Up
 	currentInputState.set(inputState())
 
 	// calculate screen transform to map input cursor/touch events
-	updateScreenTransform(surface, loopState.Canvas.Sizef())
+	surfaceSize := glm.Vec2[uint32]{surface.GetWidth(), surface.GetHeight()}.ToVec2f()
+	updateScreenTransform(surfaceSize, loopState.Canvas.Sizef())
 
 	// run game.Initialize and game.Update
 	err := performGameUpdate(loopState)
@@ -124,16 +125,9 @@ func performGameUpdate(loopState *LoopState) error {
 	return nil
 }
 
-func updateScreenTransform(surface *wgpu.Texture, offscreenSize glm.Vec2f) {
-	screenTransform := DefaultScreenTransform(
-		glm.Vec2f{float32(surface.GetWidth()), float32(surface.GetHeight())},
-		offscreenSize,
-	)
-
-	screenTransformInv := DefaultScreenTransformInv(
-		glm.Vec2f{float32(surface.GetWidth()), float32(surface.GetHeight())},
-		offscreenSize,
-	)
+func updateScreenTransform(surfaceSize glm.Vec2f, offscreenSize glm.Vec2f) {
+	screenTransform := DefaultScreenTransform(surfaceSize, offscreenSize)
+	screenTransformInv := DefaultScreenTransformInv(surfaceSize, offscreenSize)
 
 	currentScreenTransform.reset()
 	currentScreenTransform.set(screenTransform)
@@ -143,10 +137,16 @@ func updateScreenTransform(surface *wgpu.Texture, offscreenSize glm.Vec2f) {
 }
 
 func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Image) error {
-	surfaceView, err := surface.TryCreateView(nil)
-	if err != nil {
-		return fmt.Errorf("get texture: %w", err)
-	}
+	surfaceView := surface.CreateView(&wgpu.TextureViewDescriptor{
+		Label:           "SurfaceTextureView",
+		Format:          wgpu.TextureFormatBGRA8UnormSrgb,
+		Dimension:       wgpu.TextureViewDimension2D,
+		BaseMipLevel:    0,
+		MipLevelCount:   1,
+		BaseArrayLayer:  0,
+		ArrayLayerCount: 1,
+		Aspect:          wgpu.TextureAspectAll,
+	})
 
 	defer surfaceView.Release()
 
@@ -154,7 +154,6 @@ func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Im
 	surfaceImage := asImage(surfaceTexture)
 
 	// then paint canvas to the surface
-
 	game.DrawToSurface(surfaceImage, screen)
 
 	// flushes any outstanding pipelines
@@ -217,7 +216,7 @@ func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3f {
 }
 
 func DefaultDrawToSurface(surface, offscreen *Image, filter wgpu.FilterMode) {
-	surface.Clear(Color{0, 0, 0, 1})
+	surface.Clear(pulse.ColorBlack)
 
 	surface.DrawImage(offscreen, &DrawImageOptions{
 		Transform:  DefaultScreenTransform(surface.Sizef(), offscreen.Sizef()),

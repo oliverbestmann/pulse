@@ -39,6 +39,8 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) {
 	view, resolveView := target.RenderViews()
 
 	if target == target.Root() {
+		carr := color.ToWGPU()
+
 		desc := &wgpu.RenderPassDescriptor{
 			Label: "ClearUsingTexture",
 			ColorAttachments: []wgpu.RenderPassColorAttachment{
@@ -48,10 +50,10 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) {
 					LoadOp:        wgpu.LoadOpClear,
 					StoreOp:       wgpu.StoreOpStore,
 					ClearValue: wgpu.Color{
-						R: float64(color[0]),
-						G: float64(color[1]),
-						B: float64(color[2]),
-						A: float64(color[3]),
+						R: float64(carr[0]),
+						G: float64(carr[1]),
+						B: float64(carr[2]),
+						A: float64(carr[3]),
 					},
 				},
 			},

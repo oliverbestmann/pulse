@@ -18,7 +18,7 @@ type DebugTextCommand struct {
 }
 
 func NewDebugTextCommand(ctx *pulse.Context, sprites *SpriteCommand) *DebugTextCommand {
-	texture, err := pulse.DecodeTextureFromMemory(ctx, _fontpng)
+	texture, err := pulse.DecodeTextureFromMemory(ctx, _fontpng, true)
 	if err != nil {
 		// not supposed to happen
 		panic(err)
@@ -82,7 +82,7 @@ func (t *DebugTextCommand) DrawText(dest *pulse.Texture, opts DrawDebugTextOptio
 		charTexture := t.texture.SubTexture(posCh, glm.Vec2[uint32]{6, 10})
 		charTransform := scale.Translate(pos.XY()).Mul(baseTransform)
 
-		if opts.ShadowColor[3] > 0 {
+		if opts.ShadowColor.Alpha() > 0 {
 			// draw shadow
 			spriteOpts.Color = opts.ShadowColor
 			spriteOpts.Transform = opts.Transform.Translate(1, 1).Mul(charTransform)
@@ -90,7 +90,7 @@ func (t *DebugTextCommand) DrawText(dest *pulse.Texture, opts DrawDebugTextOptio
 		}
 
 		// draw the actual text
-		spriteOpts.Color = pulse.Color{1, 1, 1, 1}.Mul(opts.TextColor)
+		spriteOpts.Color = opts.TextColor
 		spriteOpts.Transform = opts.Transform.Mul(charTransform)
 		t.sprites.Draw(dest, charTexture, spriteOpts)
 

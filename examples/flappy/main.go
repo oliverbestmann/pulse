@@ -46,7 +46,7 @@ func (g *Game) Layout(surfaceWidth, surfaceHeight uint32) orion.LayoutOptions {
 }
 
 func (g *Game) Initialize() error {
-	spriteSheet, err := orion.DecodeImageFromBytes(_flappy_png)
+	spriteSheet, err := orion.DecodeImageFromBytes(_flappy_png, nil)
 	if err != nil {
 		return fmt.Errorf("load sprite sheet: %w", err)
 	}
@@ -98,7 +98,7 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *orion.Image) {
-	// screen.Clear(orion.Color{0.5, 0.5, 0.8, 1.0})
+	// screen.Clear(orion.ColorScale{0.5, 0.5, 0.8, 1.0})
 
 	cam := glm.TranslationMat3(-g.xOffset, 0)
 
@@ -149,10 +149,11 @@ func main() {
 	slog.SetDefault(slog.New(handler))
 
 	err := orion.RunGame(orion.RunGameOptions{
-		Game:         &Game{},
-		WindowWidth:  480 * 3,
-		WindowHeight: 256 * 3,
-		WindowTitle:  "Flappy",
+		Game:            &Game{},
+		WindowWidth:     480 * 3,
+		WindowHeight:    256 * 3,
+		WindowTitle:     "Flappy",
+		WindowResizable: true,
 	})
 
 	orion.Handle(err, "run game")

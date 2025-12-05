@@ -45,14 +45,12 @@ func (d *drawLinesCommand) Init() {
 	})
 }
 
-func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts StrokePathOptions) error {
+func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts StrokePathOptions) {
 	const maxPointsPerDrawCall = int(1024 * 1024 / unsafe.Sizeof(glm.Vec2f{}))
 
 	if len(points) > maxPointsPerDrawCall {
 		// recurse with rest of points
-		if err := d.Draw(target, points[maxPointsPerDrawCall:], opts); err != nil {
-			return err
-		}
+		d.Draw(target, points[maxPointsPerDrawCall:], opts)
 
 		// draw the first batch of points directly
 		points = points[:maxPointsPerDrawCall]
@@ -80,7 +78,7 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 	// record the line instance
 	config := lineConfig{
 		Projection:  projection.ToWGPU(),
-		Color:       opts.ColorScale.ToColor(),
+		Color:       opts.ColorScale.ToVec(),
 		Thickness:   opts.Thickness,
 		PointsCount: uint32(len(points)),
 	}
@@ -147,8 +145,6 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 	dev.Queue.WriteBuffer(d.pointsBuf, 0, wgpu.ToBytes(points))
 
 	dev.Queue.Submit(buf)
-
-	return nil
 }
 
 func (d *drawLinesCommand) getStencilTex(target *pulse.Texture) *wgpu.TextureView {

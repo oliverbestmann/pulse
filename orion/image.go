@@ -9,37 +9,9 @@ import (
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
-type Color = glm.Vec4f
+type Color = pulse.Color
 
-type ColorScale struct {
-	r1, g1, b1, a1 float32
-}
-
-func ColorScaleOf(color Color) ColorScale {
-	return ColorScale{
-		r1: color[0] - 1,
-		g1: color[1] - 1,
-		b1: color[2] - 1,
-		a1: color[3] - 1,
-	}
-}
-
-func ColorScaleRGBA(r, g, b, a float32) ColorScale {
-	return ColorScaleOf(glm.Vec4f{r, g, b, a})
-}
-
-func (c *ColorScale) Scaled(vec Color) ColorScale {
-	return ColorScaleOf(c.ToColor().Mul(vec))
-}
-
-func (c *ColorScale) ToColor() glm.Vec4f {
-	return glm.Vec4f{
-		c.r1 + 1,
-		c.g1 + 1,
-		c.b1 + 1,
-		c.a1 + 1,
-	}
-}
+type ColorScale = pulse.Color
 
 type Image struct {
 	texture *pulse.Texture
@@ -91,7 +63,7 @@ func (i *Image) DrawImage(source *Image, opts *DrawImageOptions) {
 
 	sprites.Draw(i.texture, source.texture, commands.DrawSpriteOptions{
 		Transform:    opts.Transform,
-		Color:        opts.ColorScale.ToColor(),
+		Color:        opts.ColorScale,
 		FilterMode:   filterMode,
 		BlendState:   blendState,
 		AddressModeU: wgpu.AddressModeClampToEdge,
@@ -129,12 +101,12 @@ func (i *Image) DrawImagesFromGPU(source *Image, buf *wgpu.Buffer, count uint, o
 
 type Vertex2d struct {
 	Position glm.Vec2f
-	Color    ColorScale
+	Color    Color
 }
 
 type DrawTrianglesOptions struct {
 	Transform  glm.Mat3f
-	ColorScale ColorScale
+	ColorScale Color
 	BlendState wgpu.BlendState
 	Shader     string
 }
@@ -158,7 +130,7 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 	for idx := range vertices {
 		transformed[idx] = commands.MeshVertex{
 			Position: vertices[idx].Position,
-			Color:    vertices[idx].Color.ToColor(),
+			Color:    vertices[idx].Color.ToVec(),
 		}
 	}
 
@@ -166,7 +138,7 @@ func (i *Image) DrawTriangles(vertices []Vertex2d, opts *DrawTrianglesOptions) {
 		Transform:  opts.Transform,
 		BlendState: blendState,
 		Vertices:   transformed,
-		Color:      opts.ColorScale.ToColor(),
+		Color:      opts.ColorScale.ToVec(),
 		Shader:     opts.Shader,
 	})
 }
@@ -209,10 +181,19 @@ func (i *Image) Texture() *pulse.Texture {
 	return i.texture
 }
 
-func DecodeImageFromBytes(buf []byte) (*Image, error) {
+type DecodeImageOptions struct {
+	// LinearRGBA indicates that the image data is to be interpreted as linear rgba.
+	// This is useful if the color values are representing data, e.g. a normal map or a height map.
+	// The default for image files like jpeg or png is non linear srgb.
+	LinearRGBA bool
+}
+
+func DecodeImageFromBytes(buf []byte, opts *DecodeImageOptions) (*Image, error) {
+	srgb := opts == nil || !opts.LinearRGBA
+
 	ctx := currentContext.Get()
 
-	texture, err := pulse.DecodeTextureFromMemory(ctx, buf)
+	texture, err := pulse.DecodeTextureFromMemory(ctx, buf, srgb)
 	if err != nil {
 		return nil, fmt.Errorf("decoding image: %w", err)
 	}

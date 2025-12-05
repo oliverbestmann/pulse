@@ -400,7 +400,7 @@ var shader2d string
 					ResolveTarget: view,
 					LoadOp:        wgpu.LoadOpClear,
 					StoreOp:       wgpu.StoreOpStore,
-					ClearValue:    wgpu.Color{R: 0.1, G: 0.2, B: 0.3, A: 1.0},
+					ClearValue:    wgpu.ColorScale{R: 0.1, G: 0.2, B: 0.3, A: 1.0},
 				},
 			},
 
