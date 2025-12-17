@@ -235,6 +235,9 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	defer p.reset()
 
 	batchConfig := p.batchConfig
+	if len(p.instances) == 0 {
+		return
+	}
 
 	descSampler := wgpu.SamplerDescriptor{
 		Label:         "UserTex-Sampler",
@@ -261,6 +264,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 	pc := p.pipelineCache.Get(pipelineConfig)
 
 	bindGroup := p.ctx.CreateBindGroup(&wgpu.BindGroupDescriptor{
+		Label:  "Sprite2 BindGroup",
 		Layout: pc.GetBindGroupLayout(0),
 		Entries: []wgpu.BindGroupEntry{
 			{
