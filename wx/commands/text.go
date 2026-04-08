@@ -5,7 +5,7 @@ import (
 	_ "image/png"
 
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -13,12 +13,12 @@ import (
 var _fontpng []byte
 
 type DebugTextCommand struct {
-	texture *pulse.Texture
+	texture *wx.Texture
 	sprites *SpriteCommand
 }
 
-func NewDebugTextCommand(ctx *pulse.Context, sprites *SpriteCommand) *DebugTextCommand {
-	texture, err := pulse.DecodeTextureFromMemory(ctx, _fontpng, true)
+func NewDebugTextCommand(ctx *wx.Context, sprites *SpriteCommand) *DebugTextCommand {
+	texture, err := wx.DecodeTextureFromMemory(ctx, _fontpng, true)
 	if err != nil {
 		// not supposed to happen
 		panic(err)
@@ -30,12 +30,12 @@ func NewDebugTextCommand(ctx *pulse.Context, sprites *SpriteCommand) *DebugTextC
 type DrawDebugTextOptions struct {
 	Text        string
 	Transform   glm.Mat3f
-	TextColor   pulse.Color
-	ShadowColor pulse.Color
+	TextColor   wx.Color
+	ShadowColor wx.Color
 	TabWidth    uint
 }
 
-func (t *DebugTextCommand) DrawText(dest *pulse.Texture, opts DrawDebugTextOptions) {
+func (t *DebugTextCommand) DrawText(dest *wx.Texture, opts DrawDebugTextOptions) {
 	spriteOpts := DrawSpriteOptions{
 		Color:        opts.TextColor,
 		FilterMode:   wgpu.FilterModeNearest,

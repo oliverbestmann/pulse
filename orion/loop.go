@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/oliverbestmann/pulse/glimpse"
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/vyn"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type LoopState struct {
-	Window        glimpse.Window
+	Window        vyn.Window
 	Game          Game
 	SurfaceWidth  uint32
 	SurfaceHeight uint32
@@ -20,7 +20,7 @@ type LoopState struct {
 	Canvas *Image
 }
 
-func loopOnce(viewState *pulse.View, loopState *LoopState, inputState glimpse.UpdateInputState) error {
+func loopOnce(viewState *wx.Surface, loopState *LoopState, inputState vyn.UpdateInputState) error {
 	DebugOverlay.StartFrame()
 
 	// get surface size for next frame
@@ -136,7 +136,7 @@ func updateScreenTransform(surfaceSize glm.Vec2f, offscreenSize glm.Vec2f) {
 	currentScreenTransformInv.set(screenTransformInv)
 }
 
-func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Image) error {
+func drawToSurface(ctx *wx.Surface, game Game, surface *wgpu.Texture, screen *Image) error {
 	surfaceView := surface.CreateView(&wgpu.TextureViewDescriptor{
 		Label:           "SurfaceTextureView",
 		Format:          wgpu.TextureFormatBGRA8UnormSrgb,
@@ -150,7 +150,7 @@ func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Im
 
 	defer surfaceView.Release()
 
-	surfaceTexture := ctx.SurfaceAsTexture(surface, surfaceView)
+	surfaceTexture := ctx.AsTexture(surface, surfaceView)
 	surfaceImage := asImage(surfaceTexture)
 
 	// then paint canvas to the surface
@@ -162,7 +162,7 @@ func drawToSurface(ctx *pulse.View, game Game, surface *wgpu.Texture, screen *Im
 	return nil
 }
 
-func layoutIsCompatible(ctx *pulse.Context, layout LayoutOptions, canvas *Image) bool {
+func layoutIsCompatible(ctx *wx.Context, layout LayoutOptions, canvas *Image) bool {
 	isOpenGL := ctx.Adapter.GetInfo().BackendType == wgpu.BackendTypeOpenGL
 
 	return canvas != nil &&
@@ -216,7 +216,7 @@ func DefaultScreenTransformInv(surfaceSize, screenSize glm.Vec2f) glm.Mat3f {
 }
 
 func DefaultDrawToSurface(surface, offscreen *Image, filter wgpu.FilterMode) {
-	surface.Clear(pulse.ColorBlack)
+	surface.Clear(wx.ColorBlack)
 
 	surface.DrawImage(offscreen, &DrawImageOptions{
 		Transform:  DefaultScreenTransform(surface.Sizef(), offscreen.Sizef()),

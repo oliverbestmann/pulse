@@ -1,17 +1,20 @@
-package pulse
+package wx
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
-type View struct {
+var ErrSurfaceNotConfigured = errors.New("surface not configured")
+
+type Surface struct {
 	*Context
 
 	surfaceConfig *wgpu.SurfaceConfiguration
 
-	// only configured if we have a multisample texture configured
+	// only set if we have a multisample texture configured
 	msaaTexture *Texture
 
 	// depth texture to render to.
@@ -22,10 +25,13 @@ type View struct {
 
 	// true if depth is enabled
 	depth bool
+
+	// true if configured was called
+	configured bool
 }
 
-func NewView(dev *Context, msaa bool, depth bool) *View {
-	st := &View{Context: dev, depth: depth}
+func NewSurface(ctx *Context, msaa bool, depth bool) *Surface {
+	st := &Surface{Context: ctx, depth: depth}
 
 	if msaa {
 		st.sampleCount = 4
@@ -34,7 +40,7 @@ func NewView(dev *Context, msaa bool, depth bool) *View {
 	}
 
 	// Print the available render formats
-	caps := dev.Surface.GetCapabilities(dev.Adapter)
+	caps := ctx.Surface.GetCapabilities(ctx.Adapter)
 	slog.Info("Available surface formats", slog.Any("formats", caps.Formats))
 
 	st.surfaceConfig = &wgpu.SurfaceConfiguration{
@@ -53,60 +59,72 @@ func NewView(dev *Context, msaa bool, depth bool) *View {
 	return st
 }
 
-func (vs *View) MSAA() bool {
-	return vs.sampleCount > 1
+func (s *Surface) MSAA() bool {
+	return s.sampleCount > 1
 }
 
-func (vs *View) Depth() bool {
-	return vs.depth
+func (s *Surface) Depth() *Texture {
+	if !s.configured {
+		panic(ErrSurfaceNotConfigured)
+	}
+
+	return s.depthTexture
 }
 
-func (vs *View) SurfaceAsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
+func (s *Surface) AsTexture(screen *wgpu.Texture, screenView *wgpu.TextureView) *Texture {
+	if !s.configured {
+		panic(ErrSurfaceNotConfigured)
+	}
+
 	screenTexture := WrapTexture(screen, WrapTextureOptions{
 		TextureView:       screenView,
 		TextureViewFormat: wgpu.TextureFormatBGRA8UnormSrgb,
 	})
 
-	if vs.MSAA() {
-		return WrapTexture(vs.msaaTexture.texture, WrapTextureOptions{
+	if s.MSAA() {
+		return WrapTexture(s.msaaTexture.texture, WrapTextureOptions{
 			TextureViewFormat: wgpu.TextureFormatBGRA8UnormSrgb,
-			TextureView:       vs.msaaTexture.textureView,
+			TextureView:       s.msaaTexture.textureView,
 			ResolveTarget:     screenTexture,
 		})
-	} else {
-		return screenTexture
 	}
+
+	return screenTexture
 }
 
-func (vs *View) ReleaseTexture() {
-	if vs.depthTexture != nil {
-		vs.depthTexture.Release()
-	}
-	if vs.msaaTexture != nil {
-		vs.msaaTexture.Release()
-	}
-}
-
-func (vs *View) Configure(width, height uint32) {
-	vs.surfaceConfig.Width = width
-	vs.surfaceConfig.Height = height
-	vs.Surface.Configure(vs.Device, vs.surfaceConfig)
+func (s *Surface) Configure(width, height uint32) {
+	s.configured = true
+	s.surfaceConfig.Width = width
+	s.surfaceConfig.Height = height
+	s.Surface.Configure(s.Device, s.surfaceConfig)
 
 	// release depth depth texture
-	vs.ReleaseTexture()
+	s.ReleaseTextures()
 
 	// create depth texture
-	if vs.depth {
-		vs.depthTexture = createDepthTexture(vs.Context, width, height, vs.sampleCount)
+	if s.depth {
+		s.depthTexture = createDepthTexture(s.Context, width, height, s.sampleCount)
 	}
 
-	if vs.MSAA() {
+	if s.MSAA() {
 		// create msaa render target texture
-		vs.msaaTexture = createMultisampleTexture(vs.Context, vs.surfaceConfig, vs.sampleCount)
+		s.msaaTexture = createMSAATexture(s.Context, s.surfaceConfig, s.sampleCount)
 	}
 }
 
-func createMultisampleTexture(ctx *Context, surfaceConfig *wgpu.SurfaceConfiguration, sampleCount uint32) *Texture {
+func (s *Surface) ReleaseTextures() {
+	s.configured = false
+
+	if s.depthTexture != nil {
+		s.depthTexture.Release()
+	}
+
+	if s.msaaTexture != nil {
+		s.msaaTexture.Release()
+	}
+}
+
+func createMSAATexture(ctx *Context, surfaceConfig *wgpu.SurfaceConfiguration, sampleCount uint32) *Texture {
 	return NewTextureFromDesc(ctx, &wgpu.TextureDescriptor{
 		Label: "MultisampleRenderTarget",
 		Usage: wgpu.TextureUsageRenderAttachment,

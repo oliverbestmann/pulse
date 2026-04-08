@@ -71,7 +71,7 @@ func (m Mat2[T]) Transpose() Mat2[T] {
 	}
 }
 
-func (m Mat2[T]) Values() [2][2]T {
+func (m Mat2[T]) Components() [2][2]T {
 	values := m.values
 	values[0][0] += 1
 	values[1][1] += 1

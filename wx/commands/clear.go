@@ -2,23 +2,23 @@ package commands
 
 import (
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
 type ClearCommand struct {
-	context       *pulse.Context
+	context       *wx.Context
 	spriteCommand *SpriteCommand
 
-	whiteTexture      *pulse.Texture
+	whiteTexture      *wx.Texture
 	whiteTextureClear bool
 }
 
-func NewClear(ctx *pulse.Context, spriteCommand *SpriteCommand) *ClearCommand {
+func NewClear(ctx *wx.Context, spriteCommand *SpriteCommand) *ClearCommand {
 	// allocate a small texture to use for clearing a sub rect of a texture
 	// by simply biting the texture into the rect
 	// TODO find a better solution, maybe a simpler render pipeline?
-	whiteTexture := pulse.NewTexture(ctx, pulse.NewTextureOptions{
+	whiteTexture := wx.NewTexture(ctx, wx.NewTextureOptions{
 		Label:  "White",
 		Format: wgpu.TextureFormatRGBA8Unorm,
 		Width:  1,
@@ -32,7 +32,7 @@ func NewClear(ctx *pulse.Context, spriteCommand *SpriteCommand) *ClearCommand {
 	}
 }
 
-func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) {
+func (c *ClearCommand) Clear(target *wx.Texture, color wx.Color) {
 	enc := c.context.CreateCommandEncoder(&wgpu.CommandEncoderDescriptor{Label: "ClearTexture"})
 	defer enc.Release()
 
@@ -70,7 +70,7 @@ func (c *ClearCommand) Clear(target *pulse.Texture, color pulse.Color) {
 		if !c.whiteTextureClear {
 			// clear the white texture once
 			c.whiteTextureClear = true
-			c.Clear(c.whiteTexture, pulse.ColorWhite)
+			c.Clear(c.whiteTexture, wx.ColorWhite)
 		}
 
 		tw, th := target.Size().ToVec2f().XY()

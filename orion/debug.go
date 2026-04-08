@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 )
 
 type frame struct {
@@ -124,7 +124,7 @@ func (d *debugOverlay) Draw(target *Image) {
 
 	if d.white == nil {
 		d.white = NewImage(1, 1, nil)
-		d.white.Clear(pulse.ColorWhite)
+		d.white.Clear(wx.ColorWhite)
 	}
 
 	DebugText(target, d.buildText(), &DebugTextOptions{
@@ -178,12 +178,12 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 			y -= height
 		}
 
-		rect(frame.GameUpdate, pulse.ColorLinearRGBA(0.25, 0.25, 1.0, 0.85))
-		rect(frame.GameDraw, pulse.ColorLinearRGBA(0.25, 1.0, 0.25, 0.85))
-		rect(frame.GetCurrentTexture, pulse.ColorLinearRGBA(0.5, 0.5, 0.5, 0.5))
+		rect(frame.GameUpdate, wx.ColorLinearRGBA(0.25, 0.25, 1.0, 0.85))
+		rect(frame.GameDraw, wx.ColorLinearRGBA(0.25, 1.0, 0.25, 0.85))
+		rect(frame.GetCurrentTexture, wx.ColorLinearRGBA(0.5, 0.5, 0.5, 0.5))
 
 		remaining := frame.Total - frame.GameUpdate - frame.GameDraw - frame.GetCurrentTexture
-		rect(remaining, pulse.ColorLinearRGBA(0.25, 0.25, 0.25, 0.5))
+		rect(remaining, wx.ColorLinearRGBA(0.25, 0.25, 0.25, 0.5))
 	}
 
 	if fps := float32(d.fps()); fps > 0 {
@@ -192,27 +192,27 @@ func (d *debugOverlay) drawFrameStats(target *Image) {
 		vertices = append(vertices,
 			Vertex2d{
 				Position: glm.Vec2f{0, y},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 			Vertex2d{
 				Position: glm.Vec2f{0, y + 1},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 			Vertex2d{
 				Position: glm.Vec2f{float32(target.Width()), y + 1},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 			Vertex2d{
 				Position: glm.Vec2f{0, y},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 			Vertex2d{
 				Position: glm.Vec2f{float32(target.Width()), y + 1},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 			Vertex2d{
 				Position: glm.Vec2f{float32(target.Width()), y},
-				Color:    pulse.ColorWhite,
+				Color:    wx.ColorWhite,
 			},
 		)
 	}

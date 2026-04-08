@@ -1,15 +1,15 @@
 package orion
 
 import (
-	"github.com/oliverbestmann/pulse/glimpse"
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/vyn"
+	"github.com/oliverbestmann/pulse/wx"
 )
 
-var currentWindow global[glimpse.Window]
-var currentContext global[*pulse.Context]
-var currentView global[*pulse.View]
-var currentInputState global[glimpse.InputState]
+var currentWindow global[vyn.Window]
+var currentContext global[*wx.Context]
+var currentView global[*wx.Surface]
+var currentInputState global[vyn.InputState]
 
 var currentScreenTransform global[glm.Mat3f]
 var currentScreenTransformInv global[glm.Mat3f]
@@ -45,6 +45,6 @@ func (g *global[T]) Get() T {
 
 // CurrentContext exposes the current webgpu context. This can be used
 // to build your own pipelines and render passes.
-func CurrentContext() *pulse.Context {
+func CurrentContext() *wx.Context {
 	return currentContext.Get()
 }

@@ -1,4 +1,4 @@
-package glimpse
+package vyn
 
 import "log/slog"
 

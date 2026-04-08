@@ -8,7 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -19,7 +19,7 @@ var mesh2dShaderCode string
 const maxMeshVertices = 128 * 1024 * 3
 
 type mesh2dBatchConfig struct {
-	target     *pulse.Texture
+	target     *wx.Texture
 	blendState wgpu.BlendState
 	shader     string
 }
@@ -33,9 +33,9 @@ type MeshVertex struct {
 }
 
 type Mesh2dCommand struct {
-	ctx *pulse.Context
+	ctx *wx.Context
 
-	pipelineCache *pulse.PipelineCache[mesh2dRenderPipeline]
+	pipelineCache *wx.PipelineCache[mesh2dRenderPipeline]
 
 	vertices        []MeshVertex
 	modelTransforms [][12]float32
@@ -47,7 +47,7 @@ type Mesh2dCommand struct {
 	batchConfig mesh2dBatchConfig
 }
 
-func NewMesh2dCommand(ctx *pulse.Context) *Mesh2dCommand {
+func NewMesh2dCommand(ctx *wx.Context) *Mesh2dCommand {
 	// create a vertex buffer
 	bufVertices := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Mesh2d.Vertices",
@@ -76,7 +76,7 @@ func NewMesh2dCommand(ctx *pulse.Context) *Mesh2dCommand {
 		bufViewTransform:   bufViewTransform,
 	}
 
-	p.pipelineCache = pulse.NewPipelineCache[mesh2dRenderPipeline](ctx)
+	p.pipelineCache = wx.NewPipelineCache[mesh2dRenderPipeline](ctx)
 
 	return p
 }
@@ -90,7 +90,7 @@ type DrawMesh2dOptions struct {
 	Shader string
 }
 
-func (p *Mesh2dCommand) DrawTriangles(target *pulse.Texture, opts DrawMesh2dOptions) {
+func (p *Mesh2dCommand) DrawTriangles(target *wx.Texture, opts DrawMesh2dOptions) {
 	if opts.Shader == "" {
 		opts.Shader = mesh2dShaderCode
 	}

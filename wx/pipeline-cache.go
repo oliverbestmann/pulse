@@ -1,4 +1,4 @@
-package pulse
+package wx
 
 import (
 	"github.com/hashicorp/golang-lru/v2"

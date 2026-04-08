@@ -1,6 +1,6 @@
 //go:build js
 
-package glimpse
+package vyn
 
 var jsToKey = map[string]Key{
 	"KeyA":           KeyA,

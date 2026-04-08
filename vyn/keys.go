@@ -1,4 +1,4 @@
-package glimpse
+package vyn
 
 //go:generate go tool stringer -type=Key -output=./keys_string.go ./keys.go
 

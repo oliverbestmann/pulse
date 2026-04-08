@@ -10,9 +10,9 @@ import (
 
 	_ "image/png"
 
-	"github.com/oliverbestmann/pulse/glimpse"
 	"github.com/oliverbestmann/pulse/glm"
 	"github.com/oliverbestmann/pulse/orion"
+	"github.com/oliverbestmann/pulse/vyn"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -81,16 +81,16 @@ func (g *Game) Update() error {
 	g.yVelocity += 300 * dt
 	g.yOffset += g.yVelocity * dt
 
-	if orion.IsKeyJustPressed(glimpse.KeySpace) || orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
+	if orion.IsKeyJustPressed(vyn.KeySpace) || orion.IsMouseButtonJustPressed(orion.MouseButton(0)) {
 		g.yVelocity = -200
 	}
 
-	if orion.IsKeyJustPressed(glimpse.KeyD) {
+	if orion.IsKeyJustPressed(vyn.KeyD) {
 		orion.DebugOverlay.RunGC = true
 		orion.DebugOverlay.Toggle()
 	}
 
-	if orion.IsKeyJustPressed(glimpse.KeyEscape) {
+	if orion.IsKeyJustPressed(vyn.KeyEscape) {
 		return orion.ExitApp
 	}
 

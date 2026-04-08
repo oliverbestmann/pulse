@@ -7,7 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -23,7 +23,7 @@ type spriteVertexUniforms struct {
 }
 
 type spriteBatchConfig struct {
-	target              *pulse.Texture
+	target              *wx.Texture
 	texture             *wgpu.TextureView
 	filterMode          wgpu.FilterMode
 	blendState          wgpu.BlendState
@@ -54,9 +54,9 @@ type spriteInstance struct {
 }
 
 type SpriteCommand struct {
-	ctx *pulse.Context
+	ctx *wx.Context
 
-	pipelineCache *pulse.PipelineCache[spritePipelineConfig]
+	pipelineCache *wx.PipelineCache[spritePipelineConfig]
 
 	instances    []spriteInstance
 	bufInstances *wgpu.Buffer
@@ -67,7 +67,7 @@ type SpriteCommand struct {
 	batchConfig spriteBatchConfig
 }
 
-func NewSpriteCommand(ctx *pulse.Context) *SpriteCommand {
+func NewSpriteCommand(ctx *wx.Context) *SpriteCommand {
 	// create a vertex buffer
 	bufInstances := ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "Sprite.Instances",
@@ -94,14 +94,14 @@ func NewSpriteCommand(ctx *pulse.Context) *SpriteCommand {
 		bufVertexUniforms: bufVertexUniforms,
 	}
 
-	p.pipelineCache = pulse.NewPipelineCache[spritePipelineConfig](ctx)
+	p.pipelineCache = wx.NewPipelineCache[spritePipelineConfig](ctx)
 
 	return p
 }
 
 type DrawSpriteOptions struct {
 	Transform    glm.Mat3f
-	Color        pulse.Color
+	Color        wx.Color
 	FilterMode   wgpu.FilterMode
 	BlendState   wgpu.BlendState
 	AddressModeU wgpu.AddressMode
@@ -111,7 +111,7 @@ type DrawSpriteOptions struct {
 	Shader string
 }
 
-func (p *SpriteCommand) Draw(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteOptions) {
+func (p *SpriteCommand) Draw(dest *wx.Texture, source *wx.Texture, opts DrawSpriteOptions) {
 	if opts.Shader == "" {
 		opts.Shader = spriteShaderCode
 	}
@@ -175,7 +175,7 @@ type DrawSpriteFromGPUOptions struct {
 	Shader       string
 }
 
-func (p *SpriteCommand) DrawFromGPU(dest *pulse.Texture, source *pulse.Texture, opts DrawSpriteFromGPUOptions) {
+func (p *SpriteCommand) DrawFromGPU(dest *wx.Texture, source *wx.Texture, opts DrawSpriteFromGPUOptions) {
 	p.Flush()
 
 	if opts.Shader == "" {
@@ -219,7 +219,7 @@ func (p *SpriteCommand) Flush() {
 		y1 = max(y1, p.instances[idx].TargetRegion[1]+p.instances[idx].TargetRegion[3])
 	}
 
-	rect := pulse.Rectangle2u{
+	rect := wx.Rectangle2u{
 		Min: glm.Vec2[uint32]{
 			uint32(x0), uint32(y0),
 		},
@@ -231,7 +231,7 @@ func (p *SpriteCommand) Flush() {
 	p.flushWith(p.bufInstances, uint32(len(p.instances)), &rect)
 }
 
-func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *pulse.Rectangle2u) {
+func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, scissorRect *wx.Rectangle2u) {
 	defer p.reset()
 
 	batchConfig := p.batchConfig
@@ -252,7 +252,7 @@ func (p *SpriteCommand) flushWith(instances *wgpu.Buffer, instanceCount uint32, 
 		MaxAnisotropy: 1,
 	}
 
-	sampler := pulse.CachedSampler(p.ctx.Device, descSampler)
+	sampler := wx.CachedSampler(p.ctx.Device, descSampler)
 
 	pipelineConfig := spritePipelineConfig{
 		TargetFormat:      batchConfig.target.Format(),

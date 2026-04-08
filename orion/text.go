@@ -2,8 +2,8 @@ package orion
 
 import (
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
-	"github.com/oliverbestmann/pulse/pulse/commands"
+	"github.com/oliverbestmann/pulse/wx"
+	"github.com/oliverbestmann/pulse/wx/commands"
 )
 
 type DebugTextOptions struct {
@@ -26,7 +26,7 @@ func DebugText(dest *Image, text string, opts *DebugTextOptions) {
 	textCommand := textCommand.Get()
 	SwitchToCommand(textCommand)
 
-	shadowColor := pulse.ColorLinearRGBA(0, 0, 0, 0.5)
+	shadowColor := wx.ColorLinearRGBA(0, 0, 0, 0.5)
 	if opts.ShadowColor != nil {
 		shadowColor = *opts.ShadowColor
 	}

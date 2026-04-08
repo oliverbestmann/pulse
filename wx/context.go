@@ -1,4 +1,4 @@
-package pulse
+package wx
 
 import (
 	"os"
@@ -38,6 +38,7 @@ type Context struct {
 	Adapter *wgpu.Adapter
 }
 
+// New creates a new Context for a wgpu.SurfaceDescriptor.
 func New(sd *wgpu.SurfaceDescriptor) (st *Context, err error) {
 	defer func() {
 		if err != nil && st != nil {
@@ -71,6 +72,7 @@ func New(sd *wgpu.SurfaceDescriptor) (st *Context, err error) {
 		return
 	}
 
+	// cache a reference to the queue
 	st.Queue = st.Device.GetQueue()
 
 	return st, nil

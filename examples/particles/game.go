@@ -8,10 +8,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/oliverbestmann/pulse/glimpse"
 	"github.com/oliverbestmann/pulse/glm"
 	"github.com/oliverbestmann/pulse/orion"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/vyn"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -84,7 +84,7 @@ func (g *TestGame) Initialize() error {
 		cb := randf(rng, 0.7, 0.9)
 		cr := randf(rng, 0.5, 0.8) * cb
 		cg := randf(rng, 0.5, 0.8) * cb
-		color := pulse.ColorOf(pulse.ColorSRGBA(cr, cg, cb, 1).ToVec().Scale(0.05))
+		color := wx.ColorOf(wx.ColorSRGBA(cr, cg, cb, 1).ToVec().Scale(0.05))
 
 		transform := glm.TranslationMat3(x, y).
 			Scale(scale, scale).
@@ -125,7 +125,7 @@ func (g *TestGame) Update() error {
 	g.time += dt
 	g.particleCommand.Execute(dt)
 
-	if orion.IsKeyPressed(glimpse.KeySpace) {
+	if orion.IsKeyPressed(vyn.KeySpace) {
 		g.iconScale += 10 * dt
 	}
 
@@ -138,10 +138,10 @@ func (g *TestGame) Draw(screen *orion.Image) {
 	t := g.time * 10
 
 	// clear the screen texture
-	screen.Clear(pulse.ColorSRGBA(0.2, 0.2, 0.3, 1.0))
+	screen.Clear(wx.ColorSRGBA(0.2, 0.2, 0.3, 1.0))
 
 	// clear our temporary test texture
-	g.tempTarget.Clear(pulse.ColorSRGBA(0.2, 0.3, 0.2, 0.1))
+	g.tempTarget.Clear(wx.ColorSRGBA(0.2, 0.3, 0.2, 0.1))
 
 	mouse := orion.MousePosition()
 

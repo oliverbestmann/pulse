@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/oliverbestmann/pulse/glimpse"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/vyn"
+	"github.com/oliverbestmann/pulse/wx"
 )
 
 type RunGameOptions struct {
@@ -39,7 +39,7 @@ func RunGame(opts RunGameOptions) error {
 	}
 
 	// create a new window (or canvas)
-	win, err := glimpse.NewWindow(
+	win, err := vyn.NewWindow(
 		opts.WindowWidth,
 		opts.WindowHeight,
 		opts.WindowTitle,
@@ -52,7 +52,7 @@ func RunGame(opts RunGameOptions) error {
 	defer win.Terminate()
 
 	// initialize the webgpu device
-	ctx, err := pulse.New(win.SurfaceDescriptor())
+	ctx, err := wx.New(win.SurfaceDescriptor())
 	if err != nil {
 		return fmt.Errorf("initializing wgpu: %w", err)
 	}
@@ -69,7 +69,7 @@ func RunGame(opts RunGameOptions) error {
 	}
 
 	// initialize the view
-	view := pulse.NewView(ctx, false, false)
+	view := wx.NewSurface(ctx, false, false)
 
 	defer view.Release()
 
@@ -84,7 +84,7 @@ func RunGame(opts RunGameOptions) error {
 		Game:   game,
 	}
 
-	err = win.Run(func(inputState glimpse.UpdateInputState) error {
+	err = win.Run(func(inputState vyn.UpdateInputState) error {
 		// do the actual rendering here
 		return loopOnce(view, loopState, inputState)
 	})

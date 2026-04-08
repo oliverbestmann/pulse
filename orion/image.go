@@ -4,20 +4,20 @@ import (
 	"fmt"
 
 	"github.com/oliverbestmann/pulse/glm"
-	"github.com/oliverbestmann/pulse/pulse"
-	"github.com/oliverbestmann/pulse/pulse/commands"
+	"github.com/oliverbestmann/pulse/wx"
+	"github.com/oliverbestmann/pulse/wx/commands"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
-type Color = pulse.Color
+type Color = wx.Color
 
-type ColorScale = pulse.Color
+type ColorScale = wx.Color
 
 type Image struct {
-	texture *pulse.Texture
+	texture *wx.Texture
 }
 
-func asImage(texture *pulse.Texture) *Image {
+func asImage(texture *wx.Texture) *Image {
 	return &Image{texture: texture}
 }
 
@@ -177,7 +177,7 @@ func (i *Image) WritePixels(pixels []byte) {
 	i.texture.WritePixels(CurrentContext(), pixels)
 }
 
-func (i *Image) Texture() *pulse.Texture {
+func (i *Image) Texture() *wx.Texture {
 	return i.texture
 }
 
@@ -193,7 +193,7 @@ func DecodeImageFromBytes(buf []byte, opts *DecodeImageOptions) (*Image, error) 
 
 	ctx := currentContext.Get()
 
-	texture, err := pulse.DecodeTextureFromMemory(ctx, buf, srgb)
+	texture, err := wx.DecodeTextureFromMemory(ctx, buf, srgb)
 	if err != nil {
 		return nil, fmt.Errorf("decoding image: %w", err)
 	}
@@ -221,7 +221,7 @@ func NewImage(width, height uint32, opts *NewImageOptions) *Image {
 		opts.Format = wgpu.TextureFormatRGBA8Unorm
 	}
 
-	texture := pulse.NewTexture(currentContext.Get(), pulse.NewTextureOptions{
+	texture := wx.NewTexture(currentContext.Get(), wx.NewTextureOptions{
 		Width:  width,
 		Height: height,
 		Format: opts.Format,

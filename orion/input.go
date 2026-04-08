@@ -1,12 +1,12 @@
 package orion
 
 import (
-	"github.com/oliverbestmann/pulse/glimpse"
 	"github.com/oliverbestmann/pulse/glm"
+	"github.com/oliverbestmann/pulse/vyn"
 )
 
-type KeyCode = glimpse.Key
-type MouseButton = glimpse.MouseButton
+type KeyCode = vyn.Key
+type MouseButton = vyn.MouseButton
 
 func MousePositionRaw() glm.Vec2f {
 	inputState := currentInputState.Get()

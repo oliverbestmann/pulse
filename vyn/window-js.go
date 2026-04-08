@@ -1,6 +1,6 @@
 //go:build js
 
-package glimpse
+package vyn
 
 import (
 	"log/slog"

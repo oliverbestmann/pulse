@@ -7,7 +7,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/oliverbestmann/pulse/glm"
 	"github.com/oliverbestmann/pulse/orion"
-	"github.com/oliverbestmann/pulse/pulse"
+	"github.com/oliverbestmann/pulse/wx"
 	"github.com/oliverbestmann/webgpu/wgpu"
 )
 
@@ -17,7 +17,7 @@ var lineShader string
 const circleTriangleCount = 32
 
 type drawLinesCommand struct {
-	cache *pulse.PipelineCache[pipelineStub]
+	cache *wx.PipelineCache[pipelineStub]
 
 	pointsBuf  *wgpu.Buffer
 	configsBuf *wgpu.Buffer
@@ -30,7 +30,7 @@ func (d *drawLinesCommand) Flush() {
 func (d *drawLinesCommand) Init() {
 	ctx := orion.CurrentContext()
 
-	d.cache = pulse.NewPipelineCache[pipelineStub](ctx)
+	d.cache = wx.NewPipelineCache[pipelineStub](ctx)
 
 	d.configsBuf = ctx.CreateBuffer(&wgpu.BufferDescriptor{
 		Label: "LineConfig",
@@ -45,7 +45,7 @@ func (d *drawLinesCommand) Init() {
 	})
 }
 
-func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts StrokePathOptions) {
+func (d *drawLinesCommand) Draw(target *wx.Texture, points []glm.Vec2f, opts StrokePathOptions) {
 	const maxPointsPerDrawCall = int(1024 * 1024 / unsafe.Sizeof(glm.Vec2f{}))
 
 	if len(points) > maxPointsPerDrawCall {
@@ -147,7 +147,7 @@ func (d *drawLinesCommand) Draw(target *pulse.Texture, points []glm.Vec2f, opts 
 	dev.Queue.Submit(buf)
 }
 
-func (d *drawLinesCommand) getStencilTex(target *pulse.Texture) *wgpu.TextureView {
+func (d *drawLinesCommand) getStencilTex(target *wx.Texture) *wgpu.TextureView {
 	desc := wgpu.TextureDescriptor{
 		Label:     "LinesStencil",
 		Usage:     wgpu.TextureUsageRenderAttachment,
@@ -183,7 +183,7 @@ type lineConfig struct {
 }
 
 type pipelineStub struct {
-	Target *pulse.Texture
+	Target *wx.Texture
 
 	Blend       wgpu.BlendState
 	Format      wgpu.TextureFormat

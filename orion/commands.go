@@ -1,8 +1,8 @@
 package orion
 
 import (
-	"github.com/oliverbestmann/pulse/pulse"
-	"github.com/oliverbestmann/pulse/pulse/commands"
+	"github.com/oliverbestmann/pulse/wx"
+	"github.com/oliverbestmann/pulse/wx/commands"
 )
 
 var clearCommand global[*commands.ClearCommand]
@@ -10,7 +10,7 @@ var spriteCommand global[*commands.SpriteCommand]
 var mesh2dCommand global[*commands.Mesh2dCommand]
 var textCommand global[*commands.DebugTextCommand]
 
-func initializeCommands(ctx *pulse.Context) {
+func initializeCommands(ctx *wx.Context) {
 	sprite := commands.NewSpriteCommand(ctx)
 	spriteCommand.set(sprite)
 
