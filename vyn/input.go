@@ -4,8 +4,6 @@ import "log/slog"
 
 type UpdateInputState func() InputState
 
-type MouseButton uint32
-
 type KeysState struct {
 	// the keys that are currently marked as "pressed"
 	Pressed map[Key]bool
@@ -34,6 +32,12 @@ func (k *KeysState) nextTick() {
 	clear(k.JustReleased)
 }
 
+type MouseButton uint32
+
+const MouseButtonLeft MouseButton = 0
+const MouseButtonRight MouseButton = 1
+const MouseButtonMiddle MouseButton = 2
+
 type MouseState struct {
 	CursorX, CursorY float32
 
@@ -48,9 +52,9 @@ type MouseState struct {
 	// mouse buttons that were just released after the last call to nextTick()
 	JustReleased map[MouseButton]bool
 
-	tick int
-
+	// we keep this around to handle delta calculation
 	prevX, prevY float32
+	tick         int
 }
 
 func (m *MouseState) press(button MouseButton) {
@@ -67,11 +71,18 @@ func (m *MouseState) position(x, y float32) {
 	m.CursorX = x
 	m.CursorY = y
 
-	m.DeltaY += y
-	m.DeltaY += y
+	if m.tick > 1 {
+		// only update delta starting after the first tick.
+		m.DeltaX = x - m.prevX
+		m.DeltaY = y - m.prevY
+	}
 }
 
 func (m *MouseState) nextTick() {
+	m.prevX = m.CursorX
+	m.prevY = m.CursorY
+	m.tick += 1
+
 	clear(m.JustPressed)
 	clear(m.JustReleased)
 }
