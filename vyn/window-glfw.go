@@ -37,7 +37,9 @@ func NewWindow(width, height int, title string, resizable bool) (Window, error) 
 	}
 
 	w := &glfwWindow{
-		win:  window,
+		win: window,
+
+		// TOOD hack, this should not be here
 		prof: profile.Start(profile.CPUProfile),
 	}
 

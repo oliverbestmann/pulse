@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/oliverbestmann/pulse/glm"
@@ -59,18 +60,36 @@ func (s *StructWriter) AppendMat4f(value glm.Mat4f) {
 
 type InstanceWriter struct {
 	buf []byte
+
+	expectedSize int
+	count        int
+}
+
+func (s *InstanceWriter) StartNew(size int) {
+	s.requireSize()
+	s.expectedSize += size
+	s.count += 1
 }
 
 func (s *InstanceWriter) Clear() {
 	s.buf = s.buf[:0]
+	s.count = 0
+	s.expectedSize = 0
 }
 
-func (s *InstanceWriter) Len() int {
-	return len(s.buf)
+func (s *InstanceWriter) Count() int {
+	return s.count
 }
 
 func (s *InstanceWriter) Bytes() []byte {
+	s.requireSize()
 	return s.buf
+}
+
+func (s *InstanceWriter) requireSize() {
+	if len(s.buf) != s.expectedSize {
+		panic(fmt.Sprintf("expected size %d, got %d", s.expectedSize, len(s.buf)))
+	}
 }
 
 func (s *InstanceWriter) AppendFloat32(value float32) {
