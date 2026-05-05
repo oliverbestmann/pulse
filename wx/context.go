@@ -67,7 +67,12 @@ func New(sd *wgpu.SurfaceDescriptor) (st *Context, err error) {
 	}
 
 	// get a Device with the default settings
-	st.Device, err = st.Adapter.RequestDevice(nil)
+	st.Device, err = st.Adapter.RequestDevice(&wgpu.DeviceDescriptor{
+		RequiredFeatures: []wgpu.FeatureName{
+			// TODO this needs to be passed as argument
+			wgpu.FeatureNameRG11B10UfloatRenderable,
+		},
+	})
 	if err != nil {
 		return
 	}
