@@ -8,58 +8,59 @@ import (
 )
 
 type StructWriter struct {
-	buf []byte
+	writer
 }
 
 func (s *StructWriter) Clear() {
-	s.buf = s.buf[:0]
+	s.reset()
 }
 
 func (s *StructWriter) Bytes() []byte {
+	s.alignTo(s.align)
 	return s.buf
 }
 
 func (s *StructWriter) AppendFloat32(value float32) {
-	s.buf = appendTo(s.buf, value, 4, 4)
+	appendTo(&s.writer, value, 4, 4)
 }
 
 func (s *StructWriter) AppendInt(value int32) {
-	s.buf = appendTo(s.buf, value, 4, 4)
+	appendTo(&s.writer, value, 4, 4)
 }
 
 func (s *StructWriter) AppendUint(value uint32) {
-	s.buf = appendTo(s.buf, value, 4, 4)
+	appendTo(&s.writer, value, 4, 4)
 }
 
 func (s *StructWriter) AppendVec2f(value glm.Vec2f) {
-	s.buf = appendTo(s.buf, value, 8, 8)
+	appendTo(&s.writer, value, 8, 8)
 }
 
 func (s *StructWriter) AppendVec3f(value glm.Vec4f) {
-	s.buf = appendTo(s.buf, value, 16, 12)
+	appendTo(&s.writer, value, 16, 12)
 }
 
 func (s *StructWriter) AppendVec4f(value glm.Vec4f) {
-	s.buf = appendTo(s.buf, value, 16, 16)
+	appendTo(&s.writer, value, 16, 16)
 }
 
 func (s *StructWriter) AppendMat2f(value glm.Mat4f) {
-	s.buf = appendTo(s.buf, value.Components(), 8, 16)
+	appendTo(&s.writer, value.Components(), 8, 16)
 }
 
 func (s *StructWriter) AppendMat3f(value glm.Mat3f) {
 	values := value.Components()
-	s.buf = appendTo(s.buf, values[0], 16, 16)
-	s.buf = appendTo(s.buf, values[1], 16, 16)
-	s.buf = appendTo(s.buf, values[2], 16, 16)
+	appendTo(&s.writer, values[0], 16, 16)
+	appendTo(&s.writer, values[1], 16, 16)
+	appendTo(&s.writer, values[2], 16, 16)
 }
 
 func (s *StructWriter) AppendMat4f(value glm.Mat4f) {
-	s.buf = appendTo(s.buf, value.Components(), 16, 4*16)
+	appendTo(&s.writer, value.Components(), 16, 4*16)
 }
 
 type InstanceWriter struct {
-	buf []byte
+	writer
 
 	expectedSize int
 	count        int
@@ -72,7 +73,7 @@ func (s *InstanceWriter) StartNew(size int) {
 }
 
 func (s *InstanceWriter) Clear() {
-	s.buf = s.buf[:0]
+	s.reset()
 	s.count = 0
 	s.expectedSize = 0
 }
@@ -93,47 +94,60 @@ func (s *InstanceWriter) requireSize() {
 }
 
 func (s *InstanceWriter) AppendFloat32(value float32) {
-	s.buf = appendTo(s.buf, value, 1, 4)
+	appendTo(&s.writer, value, 1, 4)
 }
 
 func (s *InstanceWriter) AppendInt(value int32) {
-	s.buf = appendTo(s.buf, value, 1, 4)
+	appendTo(&s.writer, value, 1, 4)
 }
 
 func (s *InstanceWriter) AppendUint(value uint32) {
-	s.buf = appendTo(s.buf, value, 1, 4)
+	appendTo(&s.writer, value, 1, 4)
 }
 
 func (s *InstanceWriter) AppendVec2f(value glm.Vec2f) {
-	s.buf = appendTo(s.buf, value, 1, 8)
+	appendTo(&s.writer, value, 1, 8)
 }
 
 func (s *InstanceWriter) AppendVec3f(value glm.Vec4f) {
-	s.buf = appendTo(s.buf, value, 1, 12)
+	appendTo(&s.writer, value, 1, 12)
 }
 
 func (s *InstanceWriter) AppendVec4f(value glm.Vec4f) {
-	s.buf = appendTo(s.buf, value, 1, 16)
+	appendTo(&s.writer, value, 1, 16)
 }
 
-func appendTo[T any](buf []byte, value T, align, size int) []byte {
+type writer struct {
+	buf   []byte
+	align int
+}
+
+func (w *writer) reset() {
+	w.buf = w.buf[:0]
+}
+
+func (w *writer) alignTo(align int) {
+	for len(w.buf)%align != 0 {
+		w.buf = append(w.buf, 0)
+	}
+}
+
+func appendTo[T any](w *writer, value T, align, size int) {
 	if unsafe.Sizeof(value) > uintptr(size) {
 		panic("value is larger than its expected size")
 	}
 
-	for len(buf)%align != 0 {
-		buf = append(buf, 0)
-	}
+	w.alignTo(align)
 
 	ptrValue := (*byte)(unsafe.Pointer(&value))
 	bufValue := unsafe.Slice(ptrValue, unsafe.Sizeof(value))
-	buf = append(buf, bufValue...)
+	w.buf = append(w.buf, bufValue...)
 
 	// add padding
 	padding := int(unsafe.Sizeof(value)) - size
 	if padding > 0 {
-		buf = append(buf, make([]byte, padding)...)
+		w.buf = append(w.buf, make([]byte, padding)...)
 	}
 
-	return buf
+	w.align = max(w.align, align)
 }
