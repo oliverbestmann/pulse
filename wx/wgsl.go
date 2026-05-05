@@ -36,7 +36,7 @@ func (s *StructWriter) AppendVec2f(value glm.Vec2f) {
 	appendTo(&s.writer, value, 8, 8)
 }
 
-func (s *StructWriter) AppendVec3f(value glm.Vec4f) {
+func (s *StructWriter) AppendVec3f(value glm.Vec3f) {
 	appendTo(&s.writer, value, 16, 12)
 }
 
