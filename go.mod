@@ -4,13 +4,13 @@ go 1.25.0
 
 require (
 	github.com/ebitengine/oto/v3 v3.4.0
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20250301202403-da16c1255728
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20260406072232-3ac4aa2bb164
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oliverbestmann/earcut-go v1.0.0
-	github.com/oliverbestmann/webgpu v1.29.1
+	github.com/oliverbestmann/webgpu v1.29.2-0.20260507215031-337844f76148
 	github.com/pkg/profile v1.7.0
-	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90
-	golang.org/x/mobile v0.0.0-20260312152759-81488f6aeb60
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
+	golang.org/x/mobile v0.0.0-20260410095206-2cfb76559b7b
 )
 
 require (
@@ -23,10 +23,10 @@ require (
 	github.com/oliverbestmann/webgpu/libs-ios v0.0.0-20260321175629-0e29e7d88738 // indirect
 	github.com/oliverbestmann/webgpu/libs-linux v0.0.0-20260321175635-fec3b53b1724 // indirect
 	github.com/oliverbestmann/webgpu/libs-windows v0.0.0-20260321175633-752a2b4a21c3 // indirect
-	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/tools v0.43.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 )
 
 tool (
