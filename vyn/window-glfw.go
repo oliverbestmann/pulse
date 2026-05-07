@@ -9,12 +9,10 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/webgpu/wgpuglfw"
-	"github.com/pkg/profile"
 )
 
 type glfwWindow struct {
 	win   *glfw.Window
-	prof  interface{ Stop() }
 	input InputState
 }
 
@@ -38,9 +36,6 @@ func NewWindow(width, height int, title string, resizable bool) (Window, error) 
 
 	w := &glfwWindow{
 		win: window,
-
-		// TOOD hack, this should not be here
-		prof: profile.Start(profile.CPUProfile),
 	}
 
 	configureInput(window, &w.input)
@@ -62,7 +57,6 @@ func (g *glfwWindow) SurfaceDescriptor() *wgpu.SurfaceDescriptor {
 }
 
 func (g *glfwWindow) Terminate() {
-	g.prof.Stop()
 	g.win.Destroy()
 	glfw.Terminate()
 }
