@@ -7,7 +7,7 @@ require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20260406072232-3ac4aa2bb164
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oliverbestmann/earcut-go v1.0.0
-	github.com/oliverbestmann/webgpu v1.30.1
+	github.com/oliverbestmann/webgpu v1.30.2
 	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
 	golang.org/x/mobile v0.0.0-20260508232728-bebd421c7fa8
 )
