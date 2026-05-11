@@ -78,8 +78,14 @@ func (s *InstanceWriter) Clear() {
 	s.expectedSize = 0
 }
 
-func (s *InstanceWriter) Count() int {
+func (s *InstanceWriter) InstanceCount() int {
+	s.requireSize()
 	return s.count
+}
+
+func (s *InstanceWriter) ByteCount() uint64 {
+	s.requireSize()
+	return uint64(len(s.buf))
 }
 
 func (s *InstanceWriter) Bytes() []byte {

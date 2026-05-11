@@ -2,7 +2,7 @@
 
 package vyn
 
-import "github.com/go-gl/glfw/v3.3/glfw"
+import "github.com/go-gl/glfw/v3.4/glfw"
 
 var glfwToKey = map[glfw.Key]Key{
 	glfw.KeySpace:        KeySpace,

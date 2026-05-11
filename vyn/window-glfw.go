@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/go-gl/glfw/v3.4/glfw"
 	"github.com/oliverbestmann/webgpu/wgpu"
 	"github.com/oliverbestmann/webgpu/wgpuglfw"
 )
